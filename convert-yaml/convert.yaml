@@ -1,0 +1,61 @@
+# HeliaAOT conversion template
+# This uses add_scalar_s8.tflite as a small example; replace paths and settings for your model.
+
+model:
+  path: ../../../helia-aot/tests/e2e/models/add_scalar_s8.tflite
+  name: add_scalar_s8
+  # subgraph: 0
+  # type: tflite
+  # description: "Short model description"
+  # version: v1.0.0
+
+module:
+  path: ./out
+  name: add_scalar_s8
+  type: zephyr
+  # prefix: aot
+
+test:
+  enabled: true
+  # tolerance: 1.0
+  # skip_verification: false
+  # golden_data: /path/to/golden_io.npz
+
+# transforms:
+#   - name: "*"
+#     enabled: true
+#     options: {}
+
+# memory:
+#   planner: greedy
+#   constraints:
+#     - name: dtcm
+#       size: 262144
+#   tensors:
+#     - type: "*"
+#       id: null
+#       attributes:
+#         arena: dtcm
+#   allocate_arenas: true
+
+# platform:
+#   name: apollo510_evb
+#   cpu: cortex-m55
+#   speeds: [96, 192]
+#   memories: {"dtcm": 262144, "sram": 524288}
+#   capabilities: [mve, dsp]
+#   preferred_memory_order: [dtcm, sram]
+#   min_alignment: 16
+
+# operators:
+#   - type: CONV_2D
+#     id: null
+#     attributes:
+#       accel: false
+
+# documentation:
+#   html: false
+
+# verbose: 1
+# force: false
+# log_file: ./helia-aot.log
