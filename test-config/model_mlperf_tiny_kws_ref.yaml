@@ -1,0 +1,7 @@
+id: model_mlperf_tiny_kws_ref
+description: MLPerf Tiny keyword spotting reference model for int8
+model:
+  source: prebuilt
+  path: models/kws_ref_model.tflite
+test:
+  tolerance: 10

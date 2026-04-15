@@ -1,0 +1,7 @@
+id: model_mlperf_tiny_strm_ww_int8
+description: MLPerf Tiny Streaming Wake Word model for int8
+model:
+  source: prebuilt
+  path: models/strm_ww_int8.tflite
+test:
+  tolerance: 10

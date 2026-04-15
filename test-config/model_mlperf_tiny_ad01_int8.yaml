@@ -1,0 +1,7 @@
+id: model_mlperf_tiny_ad01_int8
+description: MLPerf Tiny anomaly detection model for int8
+model:
+  source: prebuilt
+  path: models/ad01_int8.tflite
+test:
+  tolerance: 10
