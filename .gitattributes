@@ -1,2 +1,4 @@
 models/**/*.tflite filter=lfs diff=lfs merge=lfs -text
 models/*.tflite filter=lfs diff=lfs merge=lfs -text
+golden/*.npz filter=lfs diff=lfs merge=lfs -text
+golden/**/*.npz filter=lfs diff=lfs merge=lfs -text
