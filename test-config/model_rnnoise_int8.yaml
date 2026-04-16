@@ -4,7 +4,7 @@ platforms:
   - apollo510_evb
 model:
   source: prebuilt
-  path: tests/e2e/models/rnnoise_INT8/rnnoise_INT8.tflite
+  path: models/rnnoise_INT8.tflite
 test:
   tolerance: 10
   golden_data: golden/rnnoise_golden.npz

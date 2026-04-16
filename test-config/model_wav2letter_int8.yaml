@@ -4,7 +4,7 @@ platforms:
   - apollo510_evb
 model:
   source: prebuilt
-  path: tests/e2e/models/wave2letter/wav2letter_pruned_int8.tflite
+  path: models/wav2letter_pruned_int8.tflite
 test:
   tolerance: 10
   golden_data: golden/wave2letter_golden.npz

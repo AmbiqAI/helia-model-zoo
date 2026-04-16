@@ -4,7 +4,7 @@ platforms:
   - apollo510_evb
 model:
   source: prebuilt
-  path: models/mobilenet_v2_1.0_224_INT8/mobilenet_v2_1.0_224_INT8.tflite
+  path: models/mobilenet_v2_1.0_224_INT8.tflite
 test:
   tolerance: 10
   golden_data: golden/mobilenet_golden.npz
