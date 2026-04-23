@@ -1,13 +1,13 @@
-id: model_wav2letter
-description: Wave2Letter pruned int8 model
+id: model_wav2letter_int8
+description: Wav2Letter pruned int8 model
 platforms:
   - apollo510_evb
 model:
   source: prebuilt
-  path: models/wav2letter_pruned_int8.tflite
+  path: audio/wav2letter/model.tflite
 test:
   tolerance: 10
-  golden_data: golden/wave2letter_golden.npz
+  golden_data: audio/wav2letter/golden.npz
   fvp_timeout_seconds: 600
 memory:
   tensors:

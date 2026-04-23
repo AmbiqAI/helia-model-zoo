@@ -1,4 +1,6 @@
-models/**/*.tflite filter=lfs diff=lfs merge=lfs -text
-models/*.tflite filter=lfs diff=lfs merge=lfs -text
-golden/*.npz filter=lfs diff=lfs merge=lfs -text
-golden/**/*.npz filter=lfs diff=lfs merge=lfs -text
+audio/**/*.tflite filter=lfs diff=lfs merge=lfs -text
+audio/**/*.npz filter=lfs diff=lfs merge=lfs -text
+vision/**/*.tflite filter=lfs diff=lfs merge=lfs -text
+vision/**/*.npz filter=lfs diff=lfs merge=lfs -text
+anomaly-detection/**/*.tflite filter=lfs diff=lfs merge=lfs -text
+anomaly-detection/**/*.npz filter=lfs diff=lfs merge=lfs -text

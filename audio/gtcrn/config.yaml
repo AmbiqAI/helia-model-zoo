@@ -1,0 +1,10 @@
+id: model_gtcrn_stream_int16x8
+description: GTCRN streaming speech enhancement model for int16
+platforms:
+  - apollo510_evb
+model:
+  source: prebuilt
+  path: audio/gtcrn/model.tflite
+test:
+  tolerance: 10
+  fvp_timeout_seconds: 600

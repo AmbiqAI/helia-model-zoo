@@ -4,8 +4,8 @@ platforms:
   - apollo510_evb
 model:
   source: prebuilt
-  path: models/rnnoise_INT8.tflite
+  path: audio/rnnoise/model.tflite
 test:
   tolerance: 10
-  golden_data: golden/rnnoise_golden.npz
+  golden_data: audio/rnnoise/golden.npz
   fvp_timeout_seconds: 600

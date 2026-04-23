@@ -1,0 +1,8 @@
+id: model_mlperf_tiny_strm_ww_int8
+description: MLPerf Tiny streaming wake word model for int8
+model:
+  source: prebuilt
+  path: audio/mlperf-tiny/strm_ww/model.tflite
+test:
+  tolerance: 10
+  golden_data: audio/mlperf-tiny/strm_ww/golden.npz

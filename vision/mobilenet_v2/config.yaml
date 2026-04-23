@@ -4,10 +4,10 @@ platforms:
   - apollo510_evb
 model:
   source: prebuilt
-  path: models/mobilenet_v2_1.0_224_INT8.tflite
+  path: vision/mobilenet_v2/model.tflite
 test:
   tolerance: 10
-  golden_data: golden/mobilenet_golden.npz
+  golden_data: vision/mobilenet_v2/golden.npz
 memory:
   tensors:
     - kind: constant
