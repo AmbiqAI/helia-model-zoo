@@ -1,8 +1,7 @@
 # HeliaAOT conversion template
-# This uses add_scalar_s8.tflite as a small example; replace paths and settings for your model.
 
 model:
-  path: ../../../helia-aot/tests/e2e/models/add_scalar_s8.tflite
+  path: helia-model-zoo/audio/gtcrn/model.tflite
   name: add_scalar_s8
   # subgraph: 0
   # type: tflite

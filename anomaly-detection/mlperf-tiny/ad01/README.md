@@ -8,7 +8,6 @@ MLPerf Tiny anomaly detection reference model stored as a prebuilt int8 TFLite a
 | Benchmark family | MLPerf Tiny |
 | Task | anomaly detection |
 | Model artifact | `anomaly-detection/mlperf-tiny/ad01/model.tflite` |
-| Config | `anomaly-detection/mlperf-tiny/ad01/config.yaml` |
 | Golden fixture | `anomaly-detection/mlperf-tiny/ad01/golden.npz` |
 | Inputs | 1 tensor, `[1, 640]`, `int8` |
 | Outputs | 1 tensor, `[1, 640]`, `int8` |

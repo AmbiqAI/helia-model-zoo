@@ -8,7 +8,6 @@ GTCRN streaming speech enhancement model stored as a prebuilt int16 TFLite artif
 | Benchmark family | standalone |
 | Task | speech enhancement |
 | Model artifact | `audio/gtcrn/model.tflite` |
-| Config | `audio/gtcrn/config.yaml` |
 | Golden fixture | Not generated |
 | Inputs | 1 tensor, `[1, 129, 1, 3]`, `int16` |
 | Outputs | 1 tensor, `[1, 129, 1, 2]`, `int16` |

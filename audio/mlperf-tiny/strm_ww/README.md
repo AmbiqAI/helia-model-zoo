@@ -8,7 +8,6 @@ MLPerf Tiny streaming wake word model stored as a prebuilt int8 TFLite artifact.
 | Benchmark family | MLPerf Tiny |
 | Task | wake word detection |
 | Model artifact | `audio/mlperf-tiny/strm_ww/model.tflite` |
-| Config | `audio/mlperf-tiny/strm_ww/config.yaml` |
 | Golden fixture | `audio/mlperf-tiny/strm_ww/golden.npz` |
 | Inputs | 1 tensor, `[1, 30, 1, 40]`, `int8` |
 | Outputs | 1 tensor, `[1, 3]`, `int8` |

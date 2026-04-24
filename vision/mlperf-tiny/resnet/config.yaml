@@ -1,8 +1,0 @@
-id: model_mlperf_tiny_resnet_int8
-description: MLPerf Tiny image classification reference model for int8
-model:
-  source: prebuilt
-  path: vision/mlperf-tiny/resnet/model.tflite
-test:
-  tolerance: 10
-  golden_data: vision/mlperf-tiny/resnet/golden.npz

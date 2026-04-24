@@ -1,8 +1,0 @@
-id: model_mlperf_tiny_kws_ref
-description: MLPerf Tiny keyword spotting reference model for int8
-model:
-  source: prebuilt
-  path: audio/mlperf-tiny/kws_ref/model.tflite
-test:
-  tolerance: 10
-  golden_data: audio/mlperf-tiny/kws_ref/golden.npz

@@ -8,7 +8,6 @@ MLPerf Tiny visual wake word reference model stored as a prebuilt int8 TFLite ar
 | Benchmark family | MLPerf Tiny |
 | Task | visual wake word detection |
 | Model artifact | `vision/mlperf-tiny/vww/model.tflite` |
-| Config | `vision/mlperf-tiny/vww/config.yaml` |
 | Golden fixture | `vision/mlperf-tiny/vww/golden.npz` |
 | Inputs | 1 tensor, `[1, 96, 96, 3]`, `int8` |
 | Outputs | 1 tensor, `[1, 2]`, `int8` |

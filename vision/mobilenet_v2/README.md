@@ -8,10 +8,9 @@ MobileNet V2 image classification model stored as a prebuilt int8 TFLite artifac
 | Benchmark family | standalone |
 | Task | image classification |
 | Model artifact | `vision/mobilenet_v2/model.tflite` |
-| Config | `vision/mobilenet_v2/config.yaml` |
 | Golden fixture | `vision/mobilenet_v2/golden.npz` |
 | Inputs | 1 tensor, `[1, 224, 224, 3]`, `int8` |
 | Outputs | 1 tensor, `[1, 1001]`, `int8` |
 | Precision | int8 |
 | Provenance | Prebuilt MobileNet V2 TFLite artifact checked into this repo |
-| Notes | The config keeps the existing PSRAM memory placement settings |
+| Notes | Includes a checked-in golden fixture in the model directory |
