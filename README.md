@@ -22,6 +22,40 @@ Golden fixtures are stored as `.npz` files with a stable key layout:
 - `input_0`, `input_1`, ...
 - `output_0`, `output_1`, ...
 
+`corpus-manifest-v1.json` is the machine-readable source of artifact identity.
+It pins every established model/golden pair by SHA-256 and records the runtime
+and model-card references used for provenance and licensing review. CI hydrates
+Git LFS and validates artifact hashes, NPZ keys, shapes, and dtypes against the
+TFLite signature. Run the same preflight locally with:
+
+```bash
+python tools/validate_corpus.py corpus-manifest-v1.json
+```
+
+The per-model README referenced by each manifest entry is the artifact's model
+card. For third-party models, it must identify the upstream source and the
+applicable upstream license; inclusion in this repository is not a new license
+grant. Do not infer a license solely from a model-family name.
+
+### Reproducing future golden changes
+
+Future golden updates use the pinned LiteRT environment in
+`tools/golden-requirements.txt`, never helia-aot itself:
+
+```bash
+python -m venv .golden-venv
+. .golden-venv/bin/activate
+python -m pip install -r tools/golden-requirements.txt
+python tools/generate_golden.py path/to/model.tflite path/to/golden.npz --seed 42
+python tools/validate_corpus.py corpus-manifest-v1.json
+```
+
+After intentionally changing a golden, update its manifest digest. The review
+description must state the reference runtime/version, seed and any non-default
+input generation, changed outputs, representative and maximum numerical
+differences from the prior fixture, and approval from the model/corpus owner.
+Release goldens must not be generated with helia-aot.
+
 ## Domains
 
 - [Audio](audio/README.md)
