@@ -13,4 +13,5 @@ RNNoise speech denoising model stored as a prebuilt int8 TFLite artifact.
 | Outputs | 5 tensors: `[1, 1, 96]`, `[1, 1, 22]`, `[1, 1, 48]`, `[1, 1, 24]`, `[1, 1, 1]`, all `int8` |
 | Precision | int8 |
 | Provenance | Prebuilt RNNoise-derived TFLite artifact checked into this repo |
+| License review | Upstream provenance must be reviewed before redistribution; inclusion here is not a new license grant |
 | Notes | Includes recurrent state inputs and recurrent state outputs in the golden fixture |

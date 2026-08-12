@@ -13,4 +13,5 @@ MLPerf Tiny visual wake word reference model stored as a prebuilt int8 TFLite ar
 | Outputs | 1 tensor, `[1, 2]`, `int8` |
 | Precision | int8 |
 | Provenance | MLPerf Tiny reference model shipped in this repo as a prebuilt TFLite file |
+| License review | Upstream provenance must be reviewed before redistribution; inclusion here is not a new license grant |
 | Notes | Includes a checked-in golden fixture in the model directory |

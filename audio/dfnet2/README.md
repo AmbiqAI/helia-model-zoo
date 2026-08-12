@@ -13,4 +13,5 @@ DeepFilterNet2 streaming speech enhancement model stored as a prebuilt int16 TFL
 | Outputs | 5 tensors: `[1, 1]`, `[1, 5, 1, 96, 2]`, `[1, 1]`, `[1, 1, 1, 32]`, `[1, 26304]`, all `int16` |
 | Precision | int16 |
 | Provenance | Prebuilt DeepFilterNet2-derived TFLite artifact checked into this repo |
+| License review | Upstream provenance must be reviewed before redistribution; inclusion here is not a new license grant |
 | Notes | Includes recurrent state input and recurrent state outputs in the golden fixture |

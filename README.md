@@ -35,6 +35,25 @@ python tools/validate_corpus.py corpus-manifest-v1.json
 The per-model README referenced by each manifest entry is the provenance and
 license-review record for that artifact; it is not itself a new license grant.
 
+### Reproducing future golden changes
+
+Future golden updates use the pinned LiteRT environment in
+`tools/golden-requirements.txt`, never helia-aot itself:
+
+```bash
+python -m venv .golden-venv
+. .golden-venv/bin/activate
+python -m pip install -r tools/golden-requirements.txt
+python tools/generate_golden.py path/to/model.tflite path/to/golden.npz --seed 42
+python tools/validate_corpus.py corpus-manifest-v1.json
+```
+
+After intentionally changing a golden, update its manifest digest. The review
+description must state the reference runtime/version, seed and any non-default
+input generation, changed outputs, representative and maximum numerical
+differences from the prior fixture, and approval from the model/corpus owner.
+Release goldens must not be generated with helia-aot.
+
 ## Domains
 
 - [Audio](audio/README.md)
