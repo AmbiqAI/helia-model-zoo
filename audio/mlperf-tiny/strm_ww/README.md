@@ -13,5 +13,4 @@ MLPerf Tiny streaming wake word model stored as a prebuilt int8 TFLite artifact.
 | Outputs | 1 tensor, `[1, 3]`, `int8` |
 | Precision | int8 |
 | Provenance | MLPerf Tiny reference model shipped in this repo as a prebuilt TFLite file |
-| License review | Upstream provenance must be reviewed before redistribution; inclusion here is not a new license grant |
 | Notes | Includes a checked-in golden fixture in the model directory |

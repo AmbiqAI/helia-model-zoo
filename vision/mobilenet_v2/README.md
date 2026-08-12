@@ -13,5 +13,4 @@ MobileNet V2 image classification model stored as a prebuilt int8 TFLite artifac
 | Outputs | 1 tensor, `[1, 1001]`, `int8` |
 | Precision | int8 |
 | Provenance | Prebuilt MobileNet V2 TFLite artifact checked into this repo |
-| License review | Upstream provenance must be reviewed before redistribution; inclusion here is not a new license grant |
 | Notes | Includes a checked-in golden fixture in the model directory |

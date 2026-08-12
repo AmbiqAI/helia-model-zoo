@@ -32,8 +32,10 @@ TFLite signature. Run the same preflight locally with:
 python tools/validate_corpus.py corpus-manifest-v1.json
 ```
 
-The per-model README referenced by each manifest entry is the provenance and
-license-review record for that artifact; it is not itself a new license grant.
+The per-model README referenced by each manifest entry is the artifact's model
+card. For third-party models, it must identify the upstream source and the
+applicable upstream license; inclusion in this repository is not a new license
+grant. Do not infer a license solely from a model-family name.
 
 ### Reproducing future golden changes
 
