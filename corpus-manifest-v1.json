@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "id": "mlperf-tiny-ad01-int8",
+      "model": "anomaly-detection/mlperf-tiny/ad01/model.tflite",
+      "model_sha256": "87cf24194ef93d1d9b11a591d805526b98008e351655d29883c825c9c106ba24",
+      "golden": "anomaly-detection/mlperf-tiny/ad01/golden.npz",
+      "golden_sha256": "df63eb5d5d96342a47a8d4b37beaccf9e13a306e74a6c719561fca2e71817d69",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "anomaly-detection/mlperf-tiny/ad01/README.md",
+      "license_reference": "anomaly-detection/mlperf-tiny/ad01/README.md"
+    },
+    {
+      "id": "dfnet2-int16",
+      "model": "audio/dfnet2/model.tflite",
+      "model_sha256": "d7231b1e0da685102dc0230634956853106ef151b6f4521171a5e1c69c7204a7",
+      "golden": "audio/dfnet2/golden.npz",
+      "golden_sha256": "a1a22179358a75573ee19edd363521fbbb06aa611b55246cc0541f240fe410dd",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "audio/dfnet2/README.md",
+      "license_reference": "audio/dfnet2/README.md"
+    },
+    {
+      "id": "mlperf-tiny-kws-int8",
+      "model": "audio/mlperf-tiny/kws_ref/model.tflite",
+      "model_sha256": "aeea436800704fce17b17292e4412630ad856e9d777c044c64ef748a880bd0ae",
+      "golden": "audio/mlperf-tiny/kws_ref/golden.npz",
+      "golden_sha256": "434290baa67ce60cf6e7b0d3f5539acae92d3c0890d9f30636d16b3762402f13",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "audio/mlperf-tiny/kws_ref/README.md",
+      "license_reference": "audio/mlperf-tiny/kws_ref/README.md"
+    },
+    {
+      "id": "mlperf-tiny-streaming-wake-word-int8",
+      "model": "audio/mlperf-tiny/strm_ww/model.tflite",
+      "model_sha256": "0275b7139fd5966605a83a318cded2d7dd8ae2a0e69614950c98ff96aa056f28",
+      "golden": "audio/mlperf-tiny/strm_ww/golden.npz",
+      "golden_sha256": "c741b2320db2fdca7a8d06c8f24c01305d7dfe1f800fe9cbcd97950319229773",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "audio/mlperf-tiny/strm_ww/README.md",
+      "license_reference": "audio/mlperf-tiny/strm_ww/README.md"
+    },
+    {
+      "id": "rnnoise-int8",
+      "model": "audio/rnnoise/model.tflite",
+      "model_sha256": "9c582545b7c13af44616c44b654f4fe721aa2585630b0ca173ca3589f6f11c2c",
+      "golden": "audio/rnnoise/golden.npz",
+      "golden_sha256": "b409bd9653dbee80373a08b184ed6b9bbb6586eb22ca839e6a89801220d4829f",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "audio/rnnoise/README.md",
+      "license_reference": "audio/rnnoise/README.md"
+    },
+    {
+      "id": "wav2letter-int8",
+      "model": "audio/wav2letter/model.tflite",
+      "model_sha256": "e0814a0e586f2f2881f7fe96e6bc0b8e4cfecc8d64ced56d8f7ca85b9b7ab257",
+      "golden": "audio/wav2letter/golden.npz",
+      "golden_sha256": "10a6d2cf2d937dcd3103f3e8aefff4990a162c0f70a9814cf2dff913bfec3823",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "audio/wav2letter/README.md",
+      "license_reference": "audio/wav2letter/README.md"
+    },
+    {
+      "id": "mlperf-tiny-resnet-int8",
+      "model": "vision/mlperf-tiny/resnet/model.tflite",
+      "model_sha256": "a65375297130b602a5b28523c20d9e24127cc36508c5f67586f02c01eb6299e6",
+      "golden": "vision/mlperf-tiny/resnet/golden.npz",
+      "golden_sha256": "0b4d28883e39bc93f2878cd24c1d92bdfa21293925036766131649bdfc15dd25",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "vision/mlperf-tiny/resnet/README.md",
+      "license_reference": "vision/mlperf-tiny/resnet/README.md"
+    },
+    {
+      "id": "mlperf-tiny-vww-int8",
+      "model": "vision/mlperf-tiny/vww/model.tflite",
+      "model_sha256": "597a384c8c2c8a1276f04702f25013b7838f2f814f1ca7c174d295b73e3d6b7b",
+      "golden": "vision/mlperf-tiny/vww/golden.npz",
+      "golden_sha256": "07e6fa7df2957e2ad8889178edf8631a6b5c1ca23f517fa7b3812c0f42cb25ff",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "vision/mlperf-tiny/vww/README.md",
+      "license_reference": "vision/mlperf-tiny/vww/README.md"
+    },
+    {
+      "id": "mobilenet-v2-int8",
+      "model": "vision/mobilenet_v2/model.tflite",
+      "model_sha256": "bd8d56b80557a5fca7acf14f61e5339285c02810f7d7afa714b9763fc4b86e95",
+      "golden": "vision/mobilenet_v2/golden.npz",
+      "golden_sha256": "6dc9a898f67c468e9d220873aa84bde332cdb9dbfe34b2bbcd9de7b738671047",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "vision/mobilenet_v2/README.md",
+      "license_reference": "vision/mobilenet_v2/README.md"
+    }
+  ]
+}

@@ -22,6 +22,19 @@ Golden fixtures are stored as `.npz` files with a stable key layout:
 - `input_0`, `input_1`, ...
 - `output_0`, `output_1`, ...
 
+`corpus-manifest-v1.json` is the machine-readable source of artifact identity.
+It pins every established model/golden pair by SHA-256 and records the runtime
+and model-card references used for provenance and licensing review. CI hydrates
+Git LFS and validates artifact hashes, NPZ keys, shapes, and dtypes against the
+TFLite signature. Run the same preflight locally with:
+
+```bash
+python tools/validate_corpus.py corpus-manifest-v1.json
+```
+
+The per-model README referenced by each manifest entry is the provenance and
+license-review record for that artifact; it is not itself a new license grant.
+
 ## Domains
 
 - [Audio](audio/README.md)
