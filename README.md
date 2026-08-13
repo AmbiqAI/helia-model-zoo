@@ -13,6 +13,10 @@ This repository is a model zoo for prebuilt TFLite models. The repo groups model
 
 Each model directory is self-contained: the TFLite artifact, the checked-in golden fixture when available, and the model card all live together.
 
+To contribute a model/golden pair for helia-aot release testing, follow
+[Add a model to the release corpus](docs/how-to/add-release-model.md). Adding an
+artifact here and enabling it in helia-aot are separate, reviewed changes.
+
 The template in `convert-yaml/convert.yaml` is a `heliaAOT` conversion template. It is included as a reference for adapting a zoo model into a `heliaAOT` conversion flow with a custom module output path or platform configuration.
 
 ## Golden fixtures
