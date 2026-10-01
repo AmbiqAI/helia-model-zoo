@@ -85,6 +85,39 @@ should not be renamed when files move. Add one entry to
 }
 ```
 
+Add the same model to `src/helia_model_zoo/manifest.json` (manifest v2), with
+the v1 ID as an alias of its precision:
+
+```json
+"aliases": {"example-int8": "int8"}
+```
+
+Copy an existing v2 entry as a template. Take each tensor's name, shape, dtype,
+scale and zero point from the model, record the LiteRT resolver its golden
+replays under (`builtin_ref` for new goldens), and list explicit state pairs
+under `io.state_pairs`. CI refuses a v2 entry that disagrees with its v1 alias.
+
+The v2 fields:
+
+- `visibility` must be `public`: this repository is public, and CI refuses any
+  other entry.
+- `tier` is `converted` for a model we run but do not train (every current
+  entry), or `native` for one whose architecture helia-edge can build and train.
+- Artifacts use `lfs://` paths with `sha256` and `bytes` of the hydrated file;
+  cards and license references use `repo://` paths.
+- `io.streaming` is `stateless`, `explicit_state` (state passed as inputs and
+  outputs, listed in `state_pairs`) or `internal_state` (state kept inside the
+  model).
+- A state pair names the input and output indices, its `reset` value (`zeros`
+  is real-valued zero, which a quantized tensor stores as its zero point), and
+  `scales_tied`: whether the two tensors share a scale, so the output can be fed
+  back unchanged.
+- A golden's `kind` is `single`; `batch` and `sequence` goldens add a leading
+  axis of `steps`, and a sequence lists in `resets` the steps where its state
+  returns to the reset value. Neither is used yet.
+- `--replay` runs only with the golden's `reference_runtime_version` of LiteRT
+  installed, as `tools/golden-requirements.txt` pins it.
+
 Generate each digest from the hydrated file bytes, not from a Git LFS pointer:
 
 ```bash
@@ -101,11 +134,14 @@ Run validation from a hydrated checkout using the pinned environment:
 git lfs pull
 . .golden-venv/bin/activate
 python tools/validate_corpus.py corpus-manifest-v1.json
+python -m pip install --no-deps -e .
+helia-zoo validate --replay
 ```
 
 Validation rejects unresolved LFS pointers, path escapes, missing artifacts,
-digest mismatches, duplicate IDs, missing or unexpected NPZ keys, and
-signature-incompatible shapes or dtypes.
+digest mismatches, duplicate IDs, missing or unexpected NPZ keys,
+signature-incompatible shapes or dtypes, declared tensors that differ from the
+model, goldens that do not replay exactly, and v1/v2 disagreements.
 
 If an existing golden changes, summarize representative and maximum numerical
 differences in the pull request and obtain approval from the model/corpus

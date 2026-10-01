@@ -26,14 +26,25 @@ Golden fixtures are stored as `.npz` files with a stable key layout:
 - `input_0`, `input_1`, ...
 - `output_0`, `output_1`, ...
 
-`corpus-manifest-v1.json` is the machine-readable source of artifact identity.
-It pins every established model/golden pair by SHA-256 and records the runtime
-and model-card references used for provenance and licensing review. CI hydrates
-Git LFS and validates artifact hashes, NPZ keys, shapes, and dtypes against the
-TFLite signature. Run the same preflight locally with:
+Two manifests pin every model/golden pair by SHA-256:
+
+- `src/helia_model_zoo/manifest.json` (manifest v2) has one entry per model ID
+  with its precisions, tensors, state pairs, golden metadata, license and
+  upstream source. It ships with the Python package.
+- `corpus-manifest-v1.json` keeps the v1 format that helia-aot reads. Each v1 ID
+  is an alias of a v2 entry, and CI checks that the two agree.
+
+CI hydrates Git LFS and checks artifact hashes, the declared tensors, NPZ keys,
+shapes and dtypes against each TFLite model. It also checks that each golden's
+outputs replay exactly under its recorded LiteRT resolver and version
+(`tools/golden-requirements.txt` pins that version). Run the same checks locally
+from a hydrated checkout:
 
 ```bash
+python -m pip install -r tools/golden-requirements.txt
+python -m pip install --no-deps -e .
 python tools/validate_corpus.py corpus-manifest-v1.json
+helia-zoo validate --replay
 ```
 
 The per-model README referenced by each manifest entry is the artifact's model
@@ -67,6 +78,24 @@ The code, documentation and tooling here are licensed under the
 upstream source, and each golden fixture follows its model; [NOTICE](NOTICE)
 lists them, and each model card records its source, license, training and
 conversion.
+
+## Python package
+
+```bash
+python -m pip install "helia-model-zoo[litert] @ git+https://github.com/AmbiqAI/helia-model-zoo@<commit>"
+```
+
+```python
+import helia_model_zoo as zoo
+
+entry = zoo.get("rnnoise")         # an ID or a v1 alias such as "rnnoise-int8"
+entry.precisions["int8"].inputs    # names, shapes, dtypes, scales, zero points
+entry.io.state_pairs               # explicit state: which output feeds which input
+```
+
+`helia-zoo list`, `helia-zoo show <id>` and `helia-zoo validate` expose the same
+data on the command line. Installing from Git with git-lfs present downloads
+every artifact in the repository; set `GIT_LFS_SKIP_SMUDGE=1` to skip them.
 
 ## Domains
 
