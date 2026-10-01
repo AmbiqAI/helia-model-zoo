@@ -113,7 +113,10 @@ The v2 fields:
   `scales_tied`: whether the two tensors share a scale, so the output can be fed
   back unchanged.
 - A golden's `kind` is `single`; `batch` and `sequence` goldens add a leading
-  axis of `steps` and are not used yet.
+  axis of `steps`, and a sequence lists in `resets` the steps where its state
+  returns to the reset value. Neither is used yet.
+- `--replay` runs only with the golden's `reference_runtime_version` of LiteRT
+  installed, as `tools/golden-requirements.txt` pins it.
 
 Generate each digest from the hydrated file bytes, not from a Git LFS pointer:
 

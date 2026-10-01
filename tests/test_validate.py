@@ -3,6 +3,7 @@
 import hashlib
 import json
 import shutil
+from importlib import metadata
 
 import numpy as np
 import pytest
@@ -283,21 +284,25 @@ def test_replay_checks_every_output(root, tmp_path, data):
     ]
 
 
-def test_replay_is_skipped_after_a_signature_mismatch(root, data):
-    precision = entry(data, "rnnoise")["precisions"]["int8"]
-    precision["inputs"] = precision["inputs"][:1]
-    precision["outputs"] = precision["outputs"][:1]
-    entry(data, "rnnoise")["io"] = {"streaming": "stateless", "state_pairs": []}
-    problems = problems_of(root, only(data, "rnnoise"), replay=True)
-    assert problems[0] == "entry rnnoise.precisions.int8.inputs: the model has 4, the manifest declares 1"
-    assert not any("replay" in p for p in problems)
+def test_replay_is_skipped_after_a_signature_mismatch(root, tmp_path, data):
+    # The golden stays consistent with the manifest, and its output would fail replay.
+    copy_entry(root, tmp_path, data, "mlperf-tiny-vww")
+    golden = tmp_path / "vision/mlperf-tiny/vww/golden.npz"
+    precision = entry(data, "mlperf-tiny-vww")["precisions"]["int8"]
+    arrays = dict(np.load(golden))
+    arrays["output_0"] = arrays["output_0"] + np.int8(1)
+    write_golden(golden, arrays, precision)
+    precision["inputs"][0]["scale"] = 0.5
+    problems = problems_of(tmp_path, data, replay=True)
+    assert len(problems) == 1 and problems[0].startswith("entry mlperf-tiny-vww.precisions.int8.inputs[0]: manifest")
 
 
 def test_replay_needs_the_recorded_runtime_version(root, data):
     entry(data, "mlperf-tiny-kws")["precisions"]["int8"]["golden"]["reference_runtime_version"] = "0.0.1"
     problems = problems_of(root, only(data, "mlperf-tiny-kws"), replay=True)
+    installed = metadata.version("ai-edge-litert")
     assert problems == [
-        "entry mlperf-tiny-kws.precisions.int8.golden: replay needs ai-edge-litert 0.0.1; installed: 2.1.2"
+        f"entry mlperf-tiny-kws.precisions.int8.golden: replay needs ai-edge-litert 0.0.1; installed: {installed}"
     ]
 
 

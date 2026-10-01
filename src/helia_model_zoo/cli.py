@@ -64,7 +64,9 @@ def main(argv: list[str] | None = None) -> int:
     show.set_defaults(run=_show)
     check = commands.add_parser("validate", help="validate the manifest against a hydrated checkout")
     check.add_argument("--root", default=".", help="repository checkout with Git LFS hydrated (default: .)")
-    check.add_argument("--replay", action="store_true", help="require each golden to replay exactly")
+    check.add_argument(
+        "--replay", action="store_true", help="require each golden to replay exactly; needs the recorded LiteRT version"
+    )
     check.add_argument("--no-signatures", action="store_true", help="skip checks that need LiteRT")
     check.add_argument("--v1", type=Path, help="v1 manifest to compare (default: <root>/corpus-manifest-v1.json)")
     check.add_argument("--no-v1", action="store_true", help="skip the v1 comparison")

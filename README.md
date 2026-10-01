@@ -36,8 +36,9 @@ Two manifests pin every model/golden pair by SHA-256:
 
 CI hydrates Git LFS and checks artifact hashes, the declared tensors, NPZ keys,
 shapes and dtypes against each TFLite model. It also checks that each golden's
-outputs replay exactly under its recorded LiteRT resolver. Run the same checks
-locally from a hydrated checkout:
+outputs replay exactly under its recorded LiteRT resolver and version
+(`tools/golden-requirements.txt` pins that version). Run the same checks locally
+from a hydrated checkout:
 
 ```bash
 python -m pip install -r tools/golden-requirements.txt
