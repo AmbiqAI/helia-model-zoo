@@ -63,9 +63,10 @@ Release goldens must not be generated with helia-aot.
 ## License
 
 The code, documentation and tooling here are licensed under the
-[BSD 3-Clause License](LICENSE). Model artifacts and golden fixtures keep the
-license of their upstream source; [NOTICE](NOTICE) lists them, and each model
-card records its source, license, training data and conversion.
+[BSD 3-Clause License](LICENSE). Model artifacts keep the license of their
+upstream source, and each golden fixture follows its model; [NOTICE](NOTICE)
+lists them, and each model card records its source, license, training and
+conversion.
 
 ## Domains
 
