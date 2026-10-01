@@ -159,8 +159,9 @@ def validate(
         root: The repository checkout that ``lfs://`` and ``repo://`` paths resolve against.
         manifest: The manifest to check; by default the one shipped with this package.
         signatures: Compare declared tensors and goldens with each model (needs the ``litert`` extra).
-        replay: Also run each single golden and require its outputs exactly, under its recorded resolver
-            and its recorded LiteRT version (a different installed version is reported, not compared).
+        replay: Also run every golden call (each batch row and sequence step) and require its outputs
+            exactly, under the golden's recorded resolver and LiteRT version (a different installed
+            version is reported, not compared).
         v1: A frozen v1 manifest whose entries must equal their v2 aliases.
         public: Refuse any entry that is not public (the rule for this public repository), and fetch
             files from outside this repository without credentials, into a fresh cache unless ``cache``

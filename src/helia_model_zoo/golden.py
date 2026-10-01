@@ -80,17 +80,26 @@ def _random(tensor: Tensor, rng: np.random.Generator) -> np.ndarray:
     raise GoldenError(f"unsupported input dtype: {dtype}")
 
 
-def _check_request(precision: Precision, io: IO, kind: str, steps: int, resets: Sequence[int]) -> None:
+def _shape_rules(io: IO, kind: str, steps: int, resets: Sequence[int]) -> str | None:
+    """Why this kind, step count and reset list cannot describe a golden for ``io``, or None."""
     if kind not in GOLDEN_KINDS:
-        raise GoldenError(f"kind must be one of {list(GOLDEN_KINDS)}, got {kind!r}")
+        return f"kind must be one of {list(GOLDEN_KINDS)}, got {kind!r}"
     if steps < 1 or (kind == "single" and steps != 1):
-        raise GoldenError("a single golden has one step; batch and sequence goldens need steps >= 1")
+        return "a single golden has one step; batch and sequence goldens need steps >= 1"
     if resets and kind != "sequence":
-        raise GoldenError("only a sequence golden has resets")
+        return "only a sequence golden has resets"
     if any(not 0 < t < steps for t in resets) or len(set(resets)) != len(resets):
-        raise GoldenError(f"resets must be distinct steps in [1, {steps}), got {list(resets)}")
-    if kind == "sequence" and io.streaming == "internal_state":
-        raise GoldenError("sequence goldens for internal_state models are not supported yet")
+        return f"resets must be distinct steps in [1, {steps}), got {list(resets)}"
+    if kind != "single" and io.streaming == "internal_state":
+        return f"{kind} goldens for internal_state models are not supported yet"
+    if kind == "sequence" and not io.state_pairs:
+        return "a sequence golden needs explicit state pairs; use a batch for a stateless model"
+    return None
+
+
+def _check_request(precision: Precision, io: IO, kind: str, steps: int, resets: Sequence[int]) -> None:
+    if (reason := _shape_rules(io, kind, steps, resets)) is not None:
+        raise GoldenError(reason)
     if kind == "sequence":
         for k, pair in enumerate(io.state_pairs):
             if not _tied(precision, pair):
@@ -202,6 +211,9 @@ def check_arrays(
             problems.append(f"{where}: {key} dtype {array.dtype.name}, expected {tensor.dtype}")
     if len(problems) > found or golden.kind == "single":
         return
+    if (reason := _shape_rules(io, golden.kind, golden.steps, golden.resets)) is not None:
+        problems.append(f"{where}: {reason}")
+        return
     for k, pair in enumerate(io.state_pairs):
         state_in = precision.inputs[pair.input]
         if golden.kind == "sequence" and not _tied(precision, pair):
@@ -272,8 +284,10 @@ def state_pairs_from_names(
     def numbered(labels: Sequence[str], stem: str) -> dict[int, int]:
         found = {}
         for index, label in enumerate(labels):
-            match = re.search(rf"(?:^|[^a-z0-9]){stem}_(\d+)(?:$|[^0-9])", label)
+            match = re.fullmatch(rf"(?:serving_default_)?{stem}_(0|[1-9][0-9]*)(?::[0-9]+)?", label)
             if match:
+                if int(match[1]) in found:
+                    raise GoldenError(f"two tensors are named {stem}_{match[1]}")
                 found[int(match[1])] = index
         return found
 
@@ -301,17 +315,24 @@ def check(
     """Check one golden file against its model, without a manifest entry.
 
     ``state_pairs`` are ``(input index, output index)``; by default they come from
-    ``state_in_k``/``state_out_k`` tensor names. Returns the problems found (empty when it passes).
+    ``state_in_k``/``state_out_k`` signature or tensor names. Replay uses ``resolver`` and requires
+    ``reference_runtime_version`` of LiteRT when given (else the installed version). Returns the
+    problems found (empty when it passes); a sequence without state pairs is a problem.
     """
     from .runtime import model_tensors, runtime_version, signature_names
 
     inputs, outputs = model_tensors(model)
-    if state_pairs is None:
-        pairs = state_pairs_from_names(inputs, outputs, signature_names(model))
-    else:
-        pairs = tuple(StatePair(i, o, "zeros", inputs[i].scale == outputs[o].scale) for i, o in state_pairs)
+    try:
+        if state_pairs is None:
+            pairs = state_pairs_from_names(inputs, outputs, signature_names(model))
+        else:
+            pairs = tuple(StatePair(i, o, "zeros", inputs[i].scale == outputs[o].scale) for i, o in state_pairs)
+    except (GoldenError, IndexError) as error:
+        return [f"golden: state pairs: {error}"]
     io = IO("explicit_state" if pairs else "stateless", pairs)
     version = reference_runtime_version or runtime_version("ai-edge-litert") or "unknown"
+    if (reason := _shape_rules(IO("explicit_state" if pairs else "stateless", pairs), kind, steps, resets)) is not None:
+        return [f"golden: {reason}"]
     file = FileRef(f"repo://{Path(golden_path).name}")
     meta = Golden(file, kind, steps, tuple(resets), None, "ai-edge-litert", version, resolver)
     precision = Precision("check", FileRef(f"repo://{Path(model).name}"), inputs, outputs, meta)

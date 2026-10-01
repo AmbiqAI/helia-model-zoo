@@ -48,8 +48,10 @@ helia-zoo golden check model.tflite golden.npz --kind sequence --steps 64 --rese
 ```
 
 State pairs come from a manifest entry (`--entry`), from `--pair IN:OUT`, or
-from `state_in_k`/`state_out_k` signature names. Inputs not given with `--data`
-are drawn from `--seed`. New goldens use LiteRT's reference kernels
+from `state_in_k`/`state_out_k` signature names; a sequence without any state
+pair is refused. Inputs not given with `--data` are drawn from `--seed`; when
+`--print-manifest` records a `--data` source, `--data` must give every
+non-state input. New goldens use LiteRT's reference kernels
 (`builtin_ref`) unless `--resolver` says otherwise. In Python,
 `helia_model_zoo.golden.check()` checks one golden file against its model
 without a manifest entry.
@@ -94,7 +96,17 @@ python tools/validate_corpus.py corpus-manifest-v1.json
 ```
 
 `tools/generate_golden.py` writes a `single` golden with LiteRT's reference
-kernels; `--resolver builtin` selects the optimized kernels instead.
+kernels; `--resolver builtin` selects the optimized kernels instead. Two
+behaviours differ from earlier versions of the script:
+
+- Outputs come from the reference kernels by default. For some models (here,
+  KWS, RNNoise, Wav2Letter and MobileNet V2) they differ from the optimized
+  kernels' outputs. With `--resolver builtin`, the script reproduces the
+  earlier script's files.
+- A model with `state_in_k`/`state_out_k` state names gets its state inputs at
+  the reset value, not drawn from the seed. The other inputs' draws therefore
+  differ from the earlier script for the same seed. None of the current models
+  has such names.
 
 After intentionally changing a golden, update its manifest digest. The review
 description must state the reference runtime/version, seed and any non-default

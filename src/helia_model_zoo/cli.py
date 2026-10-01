@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -118,9 +119,20 @@ def _steps(text: str) -> tuple[int, ...]:
 
 
 def _pairs(values: list[str]) -> list[tuple[int, int]] | None:
+    """``IN:OUT`` index pairs.
+
+    Raises:
+        ValueError: If a value is not two integers separated by ':'.
+    """
     if not values:
         return None
-    return [tuple(int(x) for x in value.split(":", 1)) for value in values]
+    pairs = []
+    for value in values:
+        parts = value.split(":")
+        if len(parts) != 2 or not all(p.isdigit() for p in parts):
+            raise ValueError(f"--pair expects IN:OUT input and output indices, got {value!r}")
+        pairs.append((int(parts[0]), int(parts[1])))
+    return pairs
 
 
 def _golden_generate(args: argparse.Namespace) -> int:
@@ -130,6 +142,12 @@ def _golden_generate(args: argparse.Namespace) -> int:
     from .manifest import IO, FileRef, Golden, Precision, StatePair
     from .runtime import model_tensors, runtime_version, signature_names
 
+    if args.print_manifest and args.data and not (args.source_uri and args.source_sha256):
+        print("--print-manifest with --data needs --source-uri and --source-sha256", file=sys.stderr)
+        return 2
+    if args.entry and args.pair:
+        print("--pair cannot be combined with --entry, whose manifest entry lists the state pairs", file=sys.stderr)
+        return 2
     try:
         if args.entry:
             entry, aliased = _manifest(args).resolve(args.entry)
@@ -148,7 +166,14 @@ def _golden_generate(args: argparse.Namespace) -> int:
         data = None
         if args.data:
             with np.load(args.data, allow_pickle=False) as loaded:
+                bad = [key for key in loaded.files if not re.fullmatch(r"input_(0|[1-9][0-9]*)", key)]
+                if bad:
+                    raise ValueError(f"--data keys must be input_N, got {bad}")
                 data = {int(key.removeprefix("input_")): loaded[key] for key in loaded.files}
+            stateful = {pair.input for pair in io.state_pairs}
+            missing = [i for i in range(len(precision.inputs)) if i not in stateful and i not in data]
+            if args.print_manifest and missing:
+                raise ValueError(f"--data must give every data input when its source is recorded; missing {missing}")
         arrays = golden.generate(
             args.model,
             precision,
@@ -160,14 +185,11 @@ def _golden_generate(args: argparse.Namespace) -> int:
             seed=args.seed,
             resolver=args.resolver,
         )
-    except (KeyError, golden.GoldenError) as error:
+    except (KeyError, IndexError, ValueError) as error:
         print(error.args[0] if isinstance(error, KeyError) else error, file=sys.stderr)
         return 1
     golden.write(args.out, arrays)
     if args.print_manifest:
-        if args.data and not (args.source_uri and args.source_sha256):
-            print("--print-manifest with --data needs --source-uri and --source-sha256", file=sys.stderr)
-            return 2
         source = {"uri": args.source_uri, "sha256": args.source_sha256} if args.data else {"seed": args.seed}
         meta = Golden(
             FileRef(args.uri or f"lfs://{args.out.name}"),
@@ -188,13 +210,18 @@ def _golden_generate(args: argparse.Namespace) -> int:
 def _golden_check(args: argparse.Namespace) -> int:
     from . import golden
 
+    try:
+        pairs = _pairs(args.pair)
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 2
     problems = golden.check(
         args.model,
         args.golden,
         kind=args.kind,
         steps=args.steps,
         resets=_steps(args.resets),
-        state_pairs=_pairs(args.pair),
+        state_pairs=pairs,
         resolver=args.resolver,
         replay=not args.no_replay,
     )
