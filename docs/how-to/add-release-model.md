@@ -85,6 +85,18 @@ should not be renamed when files move. Add one entry to
 }
 ```
 
+Add the same model to `src/helia_model_zoo/manifest.json` (manifest v2), with
+the v1 ID as an alias of its precision:
+
+```json
+"aliases": {"example-int8": "int8"}
+```
+
+Copy an existing v2 entry as a template. Take each tensor's name, shape, dtype,
+scale and zero point from the model, record the LiteRT resolver its golden
+replays under (`builtin_ref` for new goldens), and list explicit state pairs
+under `io.state_pairs`. CI refuses a v2 entry that disagrees with its v1 alias.
+
 Generate each digest from the hydrated file bytes, not from a Git LFS pointer:
 
 ```bash
@@ -101,11 +113,14 @@ Run validation from a hydrated checkout using the pinned environment:
 git lfs pull
 . .golden-venv/bin/activate
 python tools/validate_corpus.py corpus-manifest-v1.json
+python -m pip install --no-deps -e .
+helia-zoo validate --replay
 ```
 
 Validation rejects unresolved LFS pointers, path escapes, missing artifacts,
-digest mismatches, duplicate IDs, missing or unexpected NPZ keys, and
-signature-incompatible shapes or dtypes.
+digest mismatches, duplicate IDs, missing or unexpected NPZ keys,
+signature-incompatible shapes or dtypes, declared tensors that differ from the
+model, goldens that do not replay exactly, and v1/v2 disagreements.
 
 If an existing golden changes, summarize representative and maximum numerical
 differences in the pull request and obtain approval from the model/corpus
