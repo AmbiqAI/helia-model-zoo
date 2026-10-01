@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Ambiq AI
+# SPDX-License-Identifier: BSD-3-Clause
 """Generate deterministic LiteRT inputs and outputs without helia-aot."""
 
 from __future__ import annotations
