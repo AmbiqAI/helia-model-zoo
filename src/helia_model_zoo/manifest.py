@@ -297,8 +297,8 @@ def _uri(value: Any, where: str, schemes: tuple[str, ...]) -> str:
         except ValueError as error:
             raise ManifestError(f"{where}: {error}") from None
     elif match["scheme"] == "https":
-        if not _HOST.fullmatch(path):
-            raise ManifestError(f"{where}: expected https://<host>/<path>, got {value!r}")
+        if not _HOST.fullmatch(path) or ".." in path.split("/"):
+            raise ManifestError(f"{where}: expected https://<host>/<path> without '..', got {value!r}")
         return value
     if path.startswith("/") or ".." in Path(path).parts:
         raise ManifestError(f"{where}: path must not be absolute or contain '..': {path!r}")

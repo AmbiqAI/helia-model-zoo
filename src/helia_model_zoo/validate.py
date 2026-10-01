@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import math
+import tempfile
 from importlib import metadata
 from pathlib import Path
 from typing import Any
@@ -234,8 +235,10 @@ def validate(
             and its recorded LiteRT version (a different installed version is reported, not compared).
         v1: A frozen v1 manifest whose entries must equal their v2 aliases.
         public: Refuse any entry that is not public (the rule for this public repository), and fetch
-            files from outside this repository without credentials.
-        cache: Where to fetch files from outside this repository (default ``hydrate.cache_dir()``).
+            files from outside this repository without credentials, into a fresh cache unless ``cache``
+            is given.
+        cache: Where to fetch files from outside this repository (default: a fresh directory when
+            ``public``, else ``hydrate.cache_dir()``).
 
     Raises:
         ValidationError: Listing every problem found.
@@ -245,6 +248,30 @@ def validate(
     if replay and not signatures:
         raise ValueError("replay needs signature checks")
     problems: list[str] = []
+    # A public check downloads into a fresh cache, so a cached copy cannot hide a file that needs credentials.
+    fresh = tempfile.TemporaryDirectory(prefix="helia-zoo-public-") if public and cache is None else None
+    if fresh is not None:
+        cache = Path(fresh.name)
+    try:
+        _check_entries(root, manifest, signatures, replay, public, cache, problems)
+    finally:
+        if fresh is not None:
+            fresh.cleanup()
+    if v1 is not None:
+        _check_v1(manifest, v1, problems)
+    if problems:
+        raise ValidationError(problems)
+
+
+def _check_entries(
+    root: Path,
+    manifest: Manifest,
+    signatures: bool,
+    replay: bool,
+    public: bool,
+    cache: Path | None,
+    problems: list[str],
+) -> None:
     for entry in manifest.entries:
         where = f"entry {entry.id}"
         if public and entry.visibility != "public":
@@ -266,7 +293,3 @@ def validate(
             golden = _check_file(root, precision.golden.file, f"{pwhere}.golden", problems, cache, public)
             if golden is not None:
                 _check_golden(precision, golden, model if signatures else None, replay, pwhere, problems)
-    if v1 is not None:
-        _check_v1(manifest, v1, problems)
-    if problems:
-        raise ValidationError(problems)

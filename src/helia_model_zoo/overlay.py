@@ -33,6 +33,8 @@ def load_overlay(location: str | Path, **options) -> Manifest:
         return load_manifest(fetch_file(FileRef(location), **options))
     if "://" in location:
         raise ManifestError(f"overlay: expected a local path or an hf:// URI, got {location!r}")
+    if not Path(location).is_file():
+        raise ManifestError(f"overlay: no such file: {location}")
     return load_manifest(Path(location))
 
 

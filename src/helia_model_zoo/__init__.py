@@ -30,7 +30,10 @@ __version__ = "0.1.0"
 
 @cache
 def manifest() -> Manifest:
-    """The shipped manifest, plus the overlay that ``HELIA_ZOO_OVERLAY`` names, if any."""
+    """The shipped manifest, plus the overlay that ``HELIA_ZOO_OVERLAY`` names, if any.
+
+    The result is cached for the process; call ``manifest.cache_clear()`` after changing the variable.
+    """
     packaged = load_manifest()
     location = overlay_location()
     return packaged if location is None else merge(packaged, load_overlay(location))

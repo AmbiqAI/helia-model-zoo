@@ -42,7 +42,7 @@ class Server:
         module.hf_hub_download = self.hf_hub_download
         monkeypatch.setitem(sys.modules, "huggingface_hub", module)
 
-    def url(self, url, destination):
+    def url(self, url, destination, limit=None):
         self.urls.append(url)
         destination.write_bytes(self.body)
 
@@ -118,7 +118,7 @@ def test_wrong_download_leaves_nothing_in_the_cache(monkeypatch, tmp_path, serve
 
 
 def test_failed_transfer_leaves_nothing_in_the_cache(monkeypatch, tmp_path):
-    def broken(url, destination):
+    def broken(url, destination, limit=None):
         destination.write_bytes(b"part")
         raise OSError("connection reset")
 
@@ -218,9 +218,10 @@ def test_overlay_location_forms(monkeypatch, tmp_path, data):
     server = Server(monkeypatch, _overlay(tmp_path, data).read_bytes())
     overlay = zoo.load_overlay("hf://datasets/Example/index@" + "c" * 40 + "/manifest.json")
     assert overlay.entries[0].id == "private-vad" and server.hf[0][3] == "c" * 40
-    for bad in ("hf://datasets/Example/index@main/manifest.json", "https://example.com/manifest.json"):
-        with pytest.raises(ManifestError):
-            zoo.load_overlay(bad)
+    with pytest.raises(ManifestError, match="40-hex"):
+        zoo.load_overlay("hf://datasets/Example/index@main/manifest.json")
+    with pytest.raises(ManifestError, match="expected a local path or an hf:// URI"):
+        zoo.load_overlay("https://example.com/manifest.json")
 
 
 def test_resolve_and_precision_choice(monkeypatch, tmp_path):
@@ -259,7 +260,7 @@ def test_public_remote_artifact_must_download_without_credentials(monkeypatch, r
     body = (root / "audio/mlperf-tiny/kws_ref/model.tflite").read_bytes()
     calls = []
 
-    def served(url, destination):
+    def served(url, destination, limit=None):
         calls.append(url)
         destination.write_bytes(body)
 
@@ -268,7 +269,7 @@ def test_public_remote_artifact_must_download_without_credentials(monkeypatch, r
     validate(root, parse_manifest(only), replay=True)
     assert calls == ["https://example.com/kws.tflite"]
 
-    def refused(url, destination):
+    def refused(url, destination, limit=None):
         raise OSError("HTTP Error 401: Unauthorized")
 
     monkeypatch.setattr(hydrate, "_download_url", refused)
@@ -277,7 +278,7 @@ def test_public_remote_artifact_must_download_without_credentials(monkeypatch, r
         validate(root, parse_manifest(only))
     assert caught.value.problems == [
         "entry mlperf-tiny-kws.precisions.int8.model: could not download https://example.com/kws.tflite: "
-        "HTTP Error 401: Unauthorized (fetched without credentials, as a public entry must be)"
+        "OSError: HTTP Error 401: Unauthorized (fetched without credentials, as a public entry must be)"
     ]
 
 
@@ -334,3 +335,113 @@ def test_alias_names_its_precision_among_several(monkeypatch, tmp_path, data):
     assert zoo.fetch("private-vad-wide", "int8").name == "model.tflite"
     with pytest.raises(KeyError, match="name one"):
         zoo.fetch("private-vad")
+
+
+def test_target_appears_only_after_verification(monkeypatch, tmp_path):
+    ref = artifact("https://example.com/m.tflite")
+    target = tmp_path / "cache" / SHA / "m.tflite"
+
+    def checking(url, destination, limit=None):
+        assert destination != target and destination.parent == target.parent and not target.exists()
+        destination.write_bytes(BODY)
+
+    monkeypatch.setattr(hydrate, "_download_url", checking)
+    assert fetch_file(ref) == target and [p.name for p in target.parent.iterdir()] == ["m.tflite"]
+
+
+def test_hf_download_leaves_only_the_verified_file(monkeypatch, tmp_path):
+    Server(monkeypatch)
+    fetch_file(artifact(HF))
+    assert sorted(str(p.relative_to(tmp_path / "cache")) for p in (tmp_path / "cache").rglob("*")) == [
+        SHA,
+        f"{SHA}/model.tflite",
+    ]
+
+
+def test_explicit_revision_wins_over_the_installed_one(monkeypatch):
+    server = Server(monkeypatch)
+    monkeypatch.setattr(hydrate, "_install", lambda: {"vcs_info": {"commit_id": "f" * 40}})
+    fetch_file(artifact("lfs://audio/x/model.tflite"), revision=COMMIT)
+    assert COMMIT in server.urls[0] and "f" * 40 not in server.urls[0]
+    server.body = b"other model"
+    fetch_file(artifact("lfs://audio/y/model.tflite", b"other model"))
+    assert "f" * 40 in server.urls[1]
+
+
+@pytest.mark.parametrize("revision", ["main", "../../outside", "A" * 40, "0" * 39])
+def test_revision_must_be_a_full_commit(monkeypatch, revision):
+    server = Server(monkeypatch)
+    with pytest.raises(FetchError, match="full 40-hex commit"):
+        fetch_file(FileRef("repo://audio/x/README.md"), revision=revision)
+    assert server.urls == []
+
+
+def test_repository_paths_are_quoted(monkeypatch):
+    server = Server(monkeypatch)
+    fetch_file(artifact("lfs://audio/my model/model.tflite"), revision=COMMIT)
+    assert server.urls[0].endswith(f"/{COMMIT}/audio/my%20model/model.tflite")
+
+
+def test_download_stops_past_the_expected_size(monkeypatch, tmp_path):
+    class Endless:
+        def read(self, n):
+            return b"x" * n
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(hydrate.urllib.request, "urlopen", lambda url, timeout: Endless())
+    with pytest.raises(FetchError, match="more than the expected 11 bytes"):
+        fetch_file(artifact("https://example.com/m.tflite"))
+    assert [p for p in (tmp_path / "cache").rglob("*") if p.is_file()] == []
+
+
+@pytest.mark.parametrize("error", [__import__("http.client").client.IncompleteRead(b"x"), ValueError("bad url")])
+def test_transport_errors_become_fetch_errors(monkeypatch, error):
+    def failing(url, timeout):
+        raise error
+
+    monkeypatch.setattr(hydrate.urllib.request, "urlopen", failing)
+    with pytest.raises(FetchError, match="could not download https://example.com/m.tflite"):
+        fetch_file(artifact("https://example.com/m.tflite"))
+
+
+def test_public_check_ignores_a_warm_cache(monkeypatch, tmp_path, data):
+    from helia_model_zoo.validate import ValidationError, validate
+
+    item = entry(data, "rnnoise")
+    item["card"] = {"uri": "https://example.com/card.md", "sha256": SHA}
+    only = parse_manifest({"schema": data["schema"], "entries": [item]})
+    Server(monkeypatch)
+    fetch_file(only.entries[0].card_file)  # now cached in HELIA_ZOO_CACHE
+
+    def refused(url, destination, limit=None):
+        raise OSError("HTTP Error 401: Unauthorized")
+
+    monkeypatch.setattr(hydrate, "_download_url", refused)
+    with pytest.raises(ValidationError) as caught:
+        validate(tmp_path, only, signatures=False)
+    assert any("card: could not download https://example.com/card.md" in p for p in caught.value.problems)
+
+
+def test_https_parent_segment_is_refused(data):
+    entry(data, "rnnoise")["precisions"]["int8"]["model"]["uri"] = "https://example.com/a/../m.tflite"
+    with pytest.raises(ManifestError, match="without '..'"):
+        parse_manifest(data)
+
+
+def test_missing_overlay_file_is_a_manifest_error(tmp_path):
+    with pytest.raises(ManifestError, match="no such file"):
+        zoo.load_overlay(tmp_path / "missing.json")
+
+
+def test_cli_fetch_uses_the_alias_precision(monkeypatch, tmp_path, data, capsys):
+    from helia_model_zoo.cli import main
+
+    test_alias_names_its_precision_among_several(monkeypatch, tmp_path, data)
+    capsys.readouterr()
+    assert main(["fetch", "private-vad-wide"]) == 0
+    assert capsys.readouterr().out.strip().endswith("wide.tflite")

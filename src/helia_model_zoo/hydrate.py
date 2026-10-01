@@ -10,21 +10,23 @@ own token resolution (``HF_TOKEN`` or ``hf auth login``).
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import os
-import shutil
+import re
 import tempfile
 import urllib.request
 from functools import cache
 from importlib import metadata
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 from .manifest import FileRef, parse_hf
 
 REPOSITORY = "AmbiqAI/helia-model-zoo"
 LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
 _CHUNK = 1024 * 1024
+_REVISION = re.compile(r"[0-9a-f]{40}")
 
 
 class FetchError(RuntimeError):
@@ -88,15 +90,24 @@ def _matches(path: Path, ref: FileRef) -> bool:
 
 
 def _url(ref: FileRef, commit: str) -> str:
+    path = quote(ref.path)
     if ref.scheme == "lfs":
-        return f"https://media.githubusercontent.com/media/{REPOSITORY}/{commit}/{ref.path}"
-    return f"https://raw.githubusercontent.com/{REPOSITORY}/{commit}/{ref.path}"
+        return f"https://media.githubusercontent.com/media/{REPOSITORY}/{commit}/{path}"
+    return f"https://raw.githubusercontent.com/{REPOSITORY}/{commit}/{path}"
 
 
-def _download_url(url: str, destination: Path) -> None:
-    """Write the body of an HTTPS GET to ``destination``; no credentials are sent."""
+def _download_url(url: str, destination: Path, limit: int | None = None) -> None:
+    """Write the body of an HTTPS GET to ``destination``; no credentials are sent.
+
+    Stops as soon as the body exceeds ``limit`` bytes.
+    """
     with urllib.request.urlopen(url, timeout=60) as response, destination.open("wb") as out:
-        shutil.copyfileobj(response, out, _CHUNK)
+        written = 0
+        while chunk := response.read(_CHUNK):
+            written += len(chunk)
+            if limit is not None and written > limit:
+                raise FetchError(f"{url}: more than the expected {limit} bytes")
+            out.write(chunk)
 
 
 def _download_hf(uri: str, destination: Path, anonymous: bool) -> None:
@@ -127,9 +138,9 @@ def _download(ref: FileRef, destination: Path, commit: str | None, anonymous: bo
         return
     url = ref.uri if ref.scheme == "https" else _url(ref, commit)
     try:
-        _download_url(url, destination)
-    except OSError as error:
-        raise FetchError(f"could not download {url}: {error}") from error
+        _download_url(url, destination, ref.bytes)
+    except (OSError, http.client.HTTPException, ValueError) as error:
+        raise FetchError(f"could not download {url}: {type(error).__name__}: {error}") from error
 
 
 def _target(ref: FileRef, cache: Path, commit: str | None) -> Path:
@@ -183,6 +194,8 @@ def fetch_file(
                 f"cannot locate {ref.uri}: no hydrated checkout and no revision; install the package from a "
                 "git SHA, or set HELIA_ZOO_ROOT or HELIA_ZOO_REVISION"
             )
+        if not _REVISION.fullmatch(revision):
+            raise FetchError(f"revision must be a full 40-hex commit, got {revision!r}")
     cache = cache_dir() if cache is None else Path(cache)
     target = _target(ref, cache, revision)
     if target.is_file() and _matches(target, ref):

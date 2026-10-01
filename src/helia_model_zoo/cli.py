@@ -90,6 +90,7 @@ def _guard(args: argparse.Namespace) -> int:
     import subprocess
 
     from .guard import scan
+    from .hydrate import FetchError
     from .overlay import load_overlay
 
     try:
@@ -97,7 +98,11 @@ def _guard(args: argparse.Namespace) -> int:
             Path(args.root), load_overlay(args.overlay), location=args.overlay, base=args.base, texts=tuple(args.text)
         )
     except subprocess.CalledProcessError as error:
-        print(f"git failed: {' '.join(error.cmd[3:])}: {error.stderr.strip()}", file=sys.stderr)
+        detail = error.stderr.decode(errors="replace") if isinstance(error.stderr, bytes) else error.stderr
+        print(f"git failed: {' '.join(map(str, error.cmd[3:]))}: {(detail or '').strip()}", file=sys.stderr)
+        return 2
+    except (ManifestError, FetchError, OSError) as error:
+        print(f"guard could not run: {error}", file=sys.stderr)
         return 2
     for hit in hits:
         print(f"{hit.where}: {hit.kind}", file=sys.stderr)

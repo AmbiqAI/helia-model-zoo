@@ -1,23 +1,40 @@
 # SPDX-FileCopyrightText: 2026 Ambiq AI
 # SPDX-License-Identifier: BSD-3-Clause
-"""Find any trace of an overlay's private entries in a checkout of this public repository.
+"""Refuse to publish a checkout of this public repository that names an overlay's private entries.
 
-Run before every push: the needles come from the overlay itself, so no list of private names
-is ever committed here.
+Run before every push. The names to look for come from the overlay itself, so no list of
+private names is ever committed here. What is searched, case-insensitively:
+
+- every commit in ``base..HEAD``: its message, author and committer, the paths it adds or
+  changes and the full content of those files, so a name added and later removed is still found;
+- the index and the working tree: tracked and untracked (not ignored) files, their paths,
+  symlink targets, and the current branch name;
+- extra text files, such as a pull-request body.
+
+What counts as a private name: each overlay entry's ID, aliases and title (titles shorter
+than six characters are skipped), the Hugging Face repositories it uses (``org/repo`` and
+``repo``), its upstream repository, and every sha256 it pins, plus the overlay's own
+repository. Names that the manifest at ``base`` also uses are public and are skipped. Encoded
+or split spellings are not detected.
 """
 
 from __future__ import annotations
 
+import json
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from .manifest import Entry, FileRef, Manifest, load_manifest, parse_hf
+from .manifest import Entry, FileRef, Manifest, ManifestError, parse_hf, parse_manifest
+
+MANIFEST_PATH = "src/helia_model_zoo/manifest.json"
+_MIN_TITLE = 6
 
 
 @dataclass(frozen=True)
 class Hit:
-    """A private name found at ``where`` (a file and line, or a commit)."""
+    """A private name found at ``where`` (a file and line, a path, a commit, or a ref)."""
 
     where: str
     kind: str
@@ -33,55 +50,98 @@ def _files(entry: Entry) -> list[FileRef]:
     return files
 
 
+def _names(entry: Entry) -> dict[str, str]:
+    found: dict[str, str] = {entry.id.lower(): f"ID of {entry.id}"}
+    for alias in entry.aliases:
+        found[alias.lower()] = f"alias of {entry.id}"
+    if len(entry.title) >= _MIN_TITLE:
+        found[entry.title.lower()] = f"title of {entry.id}"
+    for ref in _files(entry):
+        if ref.scheme == "hf":
+            repo = parse_hf(ref.uri).repo_id.lower()
+            found[repo] = f"repository of {entry.id}"
+            found[repo.split("/", 1)[1]] = f"repository of {entry.id}"
+        if ref.sha256:
+            found[ref.sha256] = f"sha256 pinned by {entry.id}"
+    if entry.upstream:
+        found[entry.upstream.repo.lower().removesuffix("/")] = f"upstream of {entry.id}"
+        if entry.upstream.sha256:
+            found[entry.upstream.sha256] = f"sha256 pinned by {entry.id}"
+    return found
+
+
 def needles(overlay: Manifest, location: str | None = None, public: Manifest | None = None) -> dict[str, str]:
     """Every private name in ``overlay``, lowercased, mapped to what it is.
 
-    Names that ``public`` (by default the packaged manifest) also uses are left out: a private
-    entry may share a public upstream or artifact, and those are not private.
+    Names that ``public`` also uses are left out: a private entry may share a public
+    upstream or artifact.
     """
     found: dict[str, str] = {}
     if location and location.startswith("hf://"):
-        found[parse_hf(location).repo_id.lower()] = "overlay repository"
+        repo = parse_hf(location).repo_id.lower()
+        found[repo] = found[repo.split("/", 1)[1]] = "overlay repository"
     for entry in overlay.entries:
-        found[entry.id.lower()] = f"ID of {entry.id}"
-        for alias in entry.aliases:
-            found[alias.lower()] = f"alias of {entry.id}"
-        for ref in _files(entry):
-            if ref.scheme == "hf":
-                found[parse_hf(ref.uri).repo_id.lower()] = f"repository of {entry.id}"
-            if ref.sha256:
-                found[ref.sha256] = f"artifact sha256 of {entry.id}"
-        if entry.upstream and entry.upstream.sha256:
-            found[entry.upstream.sha256] = f"upstream sha256 of {entry.id}"
-    public = load_manifest() if public is None else public
-    shared = set(needles_of_public(public))
+        found |= _names(entry)
+    shared = set() if public is None else {n for e in public.entries for n in _names(e)}
     return {needle: kind for needle, kind in found.items() if needle not in shared}
 
 
-def needles_of_public(manifest: Manifest) -> set[str]:
-    """The same kinds of names, for a public manifest."""
-    names: set[str] = set()
-    for entry in manifest.entries:
-        names |= {entry.id.lower(), *(alias.lower() for alias in entry.aliases)}
-        for ref in _files(entry):
-            if ref.scheme == "hf":
-                names.add(parse_hf(ref.uri).repo_id.lower())
-            if ref.sha256:
-                names.add(ref.sha256)
-        if entry.upstream and entry.upstream.sha256:
-            names.add(entry.upstream.sha256)
-    return names
+def _git(root: Path, *args: str, binary: bool = False) -> str | bytes:
+    result = subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=not binary)
+    return result.stdout
 
 
-def _git(root: Path, *args: str) -> str:
-    return subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True).stdout
+def public_manifest_at(root: Path, base: str | None) -> Manifest | None:
+    """The packaged manifest as committed at ``base``, or None if there is none.
+
+    Raises:
+        ManifestError: If ``base`` has a manifest that does not parse.
+    """
+    if base is None:
+        return None
+    try:
+        text = _git(root, "show", f"{base}:{MANIFEST_PATH}")
+    except subprocess.CalledProcessError:
+        return None
+    try:
+        return parse_manifest(json.loads(text))
+    except ValueError as error:
+        raise ManifestError(f"manifest at {base}: {error}") from None
 
 
-def _scan(text: str, where: str, lookup: dict[str, str], hits: list[Hit]) -> None:
-    for number, line in enumerate(text.lower().splitlines(), 1):
-        for needle, kind in lookup.items():
-            if needle in line:
-                hits.append(Hit(f"{where}:{number}", kind, needle))
+class _Scanner:
+    def __init__(self, lookup: dict[str, str]):
+        self.lookup, self.hits = lookup, []
+
+    def text(self, text: str, where: str, lines: bool = True) -> None:
+        for number, line in enumerate(text.lower().splitlines() or [""], 1):
+            for needle, kind in self.lookup.items():
+                if needle in line:
+                    self.hits.append(Hit(f"{where}:{number}" if lines else where, kind, needle))
+
+    def data(self, data: bytes, where: str) -> None:
+        self.text(data.decode("utf-8", errors="replace"), where)
+
+
+def _blobs(root: Path, ids: list[str]) -> dict[str, bytes]:
+    """Read many blobs at once with ``git cat-file --batch``."""
+    if not ids:
+        return {}
+    unique = list(dict.fromkeys(ids))
+    out = subprocess.run(
+        ["git", "-C", str(root), "cat-file", "--batch"],
+        input="".join(f"{i}\n" for i in unique).encode(),
+        check=True,
+        capture_output=True,
+    ).stdout
+    blobs, offset = {}, 0
+    for blob in unique:
+        header_end = out.index(b"\n", offset)
+        name, kind, size = out[offset:header_end].split(b" ")
+        start = header_end + 1
+        blobs[blob] = out[start : start + int(size)] if kind == b"blob" else b""
+        offset = start + int(size) + 1
+    return blobs
 
 
 def scan(
@@ -92,23 +152,45 @@ def scan(
     base: str | None = "origin/main",
     texts: tuple[Path, ...] = (),
 ) -> list[Hit]:
-    """Search a checkout for the overlay's private names.
+    """Search a checkout and the commits it would publish for the overlay's private names.
 
-    Searches every tracked and untracked (not ignored) file, the messages of commits in
-    ``base..HEAD`` (all of HEAD's history when ``base`` is None), and ``texts`` such as a PR body.
-    Matching is case-insensitive.
+    See the module docstring for what is searched. ``base`` None searches all of HEAD's history.
+
+    Raises:
+        subprocess.CalledProcessError: If git fails, for example on an unknown ``base``.
+        ManifestError: If the manifest at ``base`` does not parse.
     """
-    lookup = needles(overlay, location)
-    hits: list[Hit] = []
+    root = Path(root)
+    scanner = _Scanner(needles(overlay, location, public_manifest_at(root, base)))
+    revisions = _git(root, "rev-list", f"{base}..HEAD" if base else "HEAD").split()
+    for commit in revisions:
+        header = _git(root, "show", "-s", "--format=%an <%ae>%n%cn <%ce>%n%B", commit)
+        scanner.text(header, f"commit {commit[:12]}")
+        raw = _git(root, "diff-tree", "-r", "-z", "--no-commit-id", "--root", "--no-renames", commit, binary=True)
+        fields = raw.split(b"\0")
+        changes = [(fields[i].split(b" ")[3].decode(), fields[i + 1].decode()) for i in range(0, len(fields) - 1, 2)]
+        added = [(blob, path) for blob, path in changes if set(blob) != {"0"}]
+        for blob, path in changes:
+            scanner.text(path, f"commit {commit[:12]} path {path}", lines=False)
+        contents = _blobs(root, [blob for blob, _ in added])
+        for blob, path in added:
+            scanner.data(contents[blob], f"commit {commit[:12]} {path}")
+    staged = _git(root, "ls-files", "-z", "--stage", binary=True).split(b"\0")
+    entries = [line.decode().split("\t", 1) for line in staged if line]
+    index = {path: meta.split(" ")[1] for meta, path in entries}
+    contents = _blobs(root, list(index.values()))
+    for path, blob in index.items():
+        scanner.data(contents[blob], f"index {path}")
     listing = _git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
     for name in sorted(set(filter(None, listing.split("\0")))):
-        path = Path(root) / name
-        if path.is_file() and not path.is_symlink():
-            _scan(path.read_bytes().decode("utf-8", errors="replace"), name, lookup, hits)
-    log = _git(root, "log", "--format=%H%x00%B%x01", base + "..HEAD" if base else "HEAD")
-    for record in filter(None, (r.strip() for r in log.split("\x01"))):
-        commit, _, message = record.partition("\0")
-        _scan(message, f"commit {commit[:12]}", lookup, hits)
+        scanner.text(name, f"path {name}", lines=False)
+        path = root / name
+        if path.is_symlink():
+            scanner.text(os.readlink(path), f"symlink {name}", lines=False)
+        elif path.is_file():
+            scanner.data(path.read_bytes(), name)
+    branch = _git(root, "rev-parse", "--abbrev-ref", "HEAD").strip()
+    scanner.text(branch, f"branch {branch}", lines=False)
     for text in texts:
-        _scan(Path(text).read_text(encoding="utf-8", errors="replace"), str(text), lookup, hits)
-    return hits
+        scanner.data(Path(text).read_bytes(), str(text))
+    return sorted(set(scanner.hits), key=lambda hit: (hit.where, hit.needle))

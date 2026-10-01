@@ -112,24 +112,29 @@ Files are fetched as follows:
 - `hf://` sources (`hf://[datasets/]<org>/<repo>@<40-hex commit>/<path>`) need
   the `hf` extra and use huggingface_hub's own login (`HF_TOKEN` or
   `hf auth login`).
-- Every download is checked for size and sha256 before it enters the cache
-  (`HELIA_ZOO_CACHE`, default `~/.cache/helia-model-zoo`). A cached file is
-  checked again on every fetch.
+- Every model, golden or other file with a sha256 is checked for size and
+  sha256 before it enters the cache (`HELIA_ZOO_CACHE`, default
+  `~/.cache/helia-model-zoo`), and checked again on every fetch. A card or
+  overlay manifest without a sha256 is pinned by its revision instead.
 
 ### Private entries
 
 Private models never enter this repository. Their entries live in an overlay
 manifest that only its users can read; `HELIA_ZOO_OVERLAY` names it (a local
-path or an `hf://` URI), and its entries join the packaged ones. Before pushing
+path or an `hf://` URI, read once per process), and its entries join the
+packaged ones. Before pushing
 any change here, run
 
 ```bash
 helia-zoo guard --overlay "$HELIA_ZOO_OVERLAY" --text pr-body.md
 ```
 
-It refuses if any overlay ID, alias, Hugging Face repository or artifact sha256
-appears in a tracked or untracked file, in a commit message since `origin/main`,
-or in the extra text files.
+It refuses if any overlay ID, alias, title, Hugging Face repository, upstream
+or sha256 appears in what a push would publish: the content, paths, messages
+and authors of every commit since `origin/main`, the index and working tree
+(including file names and symlink targets), the branch name, or the extra text
+files. Names that the manifest at `origin/main` also uses are public and are not
+reported.
 
 ## Domains
 
