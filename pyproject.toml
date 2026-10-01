@@ -11,6 +11,7 @@ dependencies = ["numpy>=1.26"]
 
 [project.optional-dependencies]
 litert = ["ai-edge-litert>=2.1.2"]
+hf = ["huggingface_hub>=2.1"]
 
 [project.scripts]
 helia-zoo = "helia_model_zoo.cli:main"

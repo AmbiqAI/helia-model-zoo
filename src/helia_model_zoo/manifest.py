@@ -13,7 +13,10 @@ import re
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .golden import GoldenData
 
 SCHEMA = "helia-model-zoo/manifest@2"
 
@@ -24,15 +27,42 @@ STREAMING = ("stateless", "explicit_state", "internal_state")
 GOLDEN_KINDS = ("single", "batch", "sequence")
 RESOLVERS = ("builtin", "builtin_ref")
 DTYPES = ("float32", "float16", "int8", "uint8", "int16", "int32", "int64", "bool")
-# Artifacts (models, goldens) are Git LFS files in this repository (lfs://);
-# cards and license references are plain files in it (repo://).
-ARTIFACT_SCHEMES = ("lfs",)
-TEXT_SCHEMES = ("repo",)
+# lfs:// is a Git LFS file in this repository, repo:// a plain file in it; https:// is any HTTPS URL;
+# hf://[datasets/|spaces/]<org>/<repo>@<40-hex commit>/<path> is a Hugging Face file (HfFileSystem form).
+ARTIFACT_SCHEMES = ("lfs", "https", "hf")
+TEXT_SCHEMES = ("repo", "https", "hf")
 
 _ID = re.compile(r"[a-z0-9][a-z0-9.-]*")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _REVISION = re.compile(r"[0-9a-f]{40}")
 _URI = re.compile(r"(?P<scheme>[a-z]+)://(?P<path>.+)")
+_HF = re.compile(
+    r"(?:(?P<kind>datasets|spaces)/)?(?P<repo>[A-Za-z0-9][\w.-]*/[A-Za-z0-9][\w.-]*)@(?P<revision>[0-9a-f]{40})/(?P<path>.+)"
+)
+_HOST = re.compile(r"[A-Za-z0-9.-]+(:[0-9]+)?/.+")
+
+
+@dataclass(frozen=True)
+class HfLocation:
+    """Where an ``hf://`` URI points: ``repo_type`` is ``model``, ``dataset`` or ``space``."""
+
+    repo_type: str
+    repo_id: str
+    revision: str
+    path: str
+
+
+def parse_hf(uri: str) -> HfLocation:
+    """Split an ``hf://`` URI; the revision must be a full 40-hex commit.
+
+    Raises:
+        ValueError: If ``uri`` is not of that form.
+    """
+    match = _HF.fullmatch(uri.removeprefix("hf://")) if uri.startswith("hf://") else None
+    if not match:
+        raise ValueError(f"expected hf://[datasets/|spaces/]<org>/<repo>@<40-hex commit>/<path>, got {uri!r}")
+    kind = {"datasets": "dataset", "spaces": "space", None: "model"}[match["kind"]]
+    return HfLocation(kind, match["repo"], match["revision"], match["path"])
 
 
 class ManifestError(ValueError):
@@ -55,12 +85,20 @@ class FileRef:
     def path(self) -> str:
         return self.uri.split("://", 1)[1]
 
+    @property
+    def in_repository(self) -> bool:
+        """Whether this file lives in this repository (``lfs://`` or ``repo://``)."""
+        return self.scheme in ("lfs", "repo")
+
     def resolve(self, root: Path) -> Path:
         """This file's path in a checkout of this repository.
 
         Raises:
-            ValueError: If the path leaves ``root``, for example through a symlink.
+            ValueError: If the file is not in this repository, or its path leaves ``root``
+                (for example through a symlink).
         """
+        if not self.in_repository:
+            raise ValueError(f"{self.uri} is not a file in this repository")
         root = Path(root).resolve()
         candidate = (root / self.path).resolve()
         if not candidate.is_relative_to(root):
@@ -151,10 +189,42 @@ class Entry:
     tier: str
     visibility: str
     license: License
-    card: FileRef
+    card_file: FileRef
     upstream: Upstream | None
     io: IO
     precisions: dict[str, Precision]
+
+    def precision(self, name: str | None = None) -> Precision:
+        """The named precision, or the only one when ``name`` is None."""
+        if name is None:
+            if len(self.precisions) != 1:
+                raise KeyError(f"{self.id} has precisions {sorted(self.precisions)}; name one")
+            return next(iter(self.precisions.values()))
+        if name not in self.precisions:
+            raise KeyError(f"{self.id} has no precision {name!r}; it has {sorted(self.precisions)}")
+        return self.precisions[name]
+
+    def fetch(self, precision: str | None = None, **options: Any) -> Path:
+        """The verified local path of a precision's model; ``options`` go to ``fetch_file``."""
+        from .hydrate import fetch_file
+
+        return fetch_file(self.precision(precision).model, **options)
+
+    def golden(self, precision: str | None = None, **options: Any) -> GoldenData:
+        """A precision's golden arrays and metadata, from a verified local file."""
+        from .golden import load_golden
+        from .hydrate import fetch_file
+
+        chosen = self.precision(precision)
+        if chosen.golden is None:
+            raise KeyError(f"{self.id} {chosen.name} has no golden")
+        return load_golden(fetch_file(chosen.golden.file, **options), chosen)
+
+    def card(self, **options: Any) -> Path:
+        """The verified local path of the model card."""
+        from .hydrate import fetch_file
+
+        return fetch_file(self.card_file, **options)
 
 
 @dataclass(frozen=True)
@@ -221,8 +291,17 @@ def _uri(value: Any, where: str, schemes: tuple[str, ...]) -> str:
     if not match or match["scheme"] not in schemes:
         raise ManifestError(f"{where}: expected a URI with scheme {list(schemes)}, got {value!r}")
     path = match["path"]
+    if match["scheme"] == "hf":
+        try:
+            path = parse_hf(value).path
+        except ValueError as error:
+            raise ManifestError(f"{where}: {error}") from None
+    elif match["scheme"] == "https":
+        if not _HOST.fullmatch(path):
+            raise ManifestError(f"{where}: expected https://<host>/<path>, got {value!r}")
+        return value
     if path.startswith("/") or ".." in Path(path).parts:
-        raise ManifestError(f"{where}: path must stay inside the repository: {path!r}")
+        raise ManifestError(f"{where}: path must not be absolute or contain '..': {path!r}")
     return value
 
 
@@ -234,8 +313,12 @@ def _file(value: Any, where: str, artifact: bool) -> FileRef:
             _sha256(data["sha256"], f"{where}.sha256"),
             _int(data["bytes"], f"{where}.bytes", 1),
         )
-    data = _object(value, where, {"uri"})
-    return FileRef(_uri(data["uri"], f"{where}.uri", TEXT_SCHEMES))
+    data = _object(value, where, {"uri"}, frozenset({"sha256"}))
+    uri = _uri(data["uri"], f"{where}.uri", TEXT_SCHEMES)
+    sha256 = None if data.get("sha256") is None else _sha256(data["sha256"], f"{where}.sha256")
+    if uri.startswith("https://") and sha256 is None:
+        raise ManifestError(f"{where}: an https:// file needs a sha256, since its URL is not pinned to a revision")
+    return FileRef(uri, sha256)
 
 
 def _tensor(value: Any, where: str) -> Tensor:
@@ -406,6 +489,26 @@ def _entry(value: Any, where: str) -> Entry:
     )
 
 
+def merge(*manifests: Manifest) -> Manifest:
+    """One manifest holding every entry; IDs and aliases must stay unique across all of them.
+
+    Raises:
+        ManifestError: If an ID or alias is used twice.
+    """
+    entries = tuple(entry for manifest in manifests for entry in manifest.entries)
+    _check_unique(entries)
+    return Manifest(entries)
+
+
+def _check_unique(entries: tuple[Entry, ...]) -> None:
+    names: dict[str, str] = {}
+    for entry in entries:
+        for name in (entry.id, *entry.aliases):
+            if name in names:
+                raise ManifestError(f"entry {entry.id}: ID or alias {name!r} is already used by {names[name]}")
+            names[name] = entry.id
+
+
 def parse_manifest(data: Any) -> Manifest:
     """Check a decoded manifest@2 document and return it as typed records.
 
@@ -418,12 +521,7 @@ def parse_manifest(data: Any) -> Manifest:
     if not isinstance(data["entries"], list) or not data["entries"]:
         raise ManifestError("manifest: expected at least one entry")
     entries = tuple(_entry(value, f"entries[{i}]") for i, value in enumerate(data["entries"]))
-    names: dict[str, str] = {}
-    for entry in entries:
-        for name in (entry.id, *entry.aliases):
-            if name in names:
-                raise ManifestError(f"entry {entry.id}: ID or alias {name!r} is already used by {names[name]}")
-            names[name] = entry.id
+    _check_unique(entries)
     return Manifest(entries)
 
 

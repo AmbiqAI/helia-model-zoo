@@ -91,11 +91,45 @@ import helia_model_zoo as zoo
 entry = zoo.get("rnnoise")         # an ID or a v1 alias such as "rnnoise-int8"
 entry.precisions["int8"].inputs    # names, shapes, dtypes, scales, zero points
 entry.io.state_pairs               # explicit state: which output feeds which input
+
+model = entry.fetch("int8")        # a local path whose sha256 matches the manifest
+golden = entry.golden("int8")      # golden.inputs / golden.outputs as NumPy arrays
+zoo.resolve("zoo://rnnoise/int8")  # the same model by URI
 ```
 
-`helia-zoo list`, `helia-zoo show <id>` and `helia-zoo validate` expose the same
-data on the command line. Installing from Git with git-lfs present downloads
-every artifact in the repository; set `GIT_LFS_SKIP_SMUDGE=1` to skip them.
+`helia-zoo list`, `show <id>`, `fetch <id> [--golden] [--card]` and `validate`
+expose the same on the command line. Installing from Git with git-lfs present
+downloads every artifact in the repository; set `GIT_LFS_SKIP_SMUDGE=1` to skip
+them.
+
+Files are fetched as follows:
+
+- Files in this repository are read from a hydrated checkout when there is one
+  (`root=`, `HELIA_ZOO_ROOT`, or an editable install). Otherwise they are
+  downloaded from GitHub at the commit the package was installed from
+  (`HELIA_ZOO_REVISION` overrides it).
+- `https://` sources are downloaded directly.
+- `hf://` sources (`hf://[datasets/]<org>/<repo>@<40-hex commit>/<path>`) need
+  the `hf` extra and use huggingface_hub's own login (`HF_TOKEN` or
+  `hf auth login`).
+- Every download is checked for size and sha256 before it enters the cache
+  (`HELIA_ZOO_CACHE`, default `~/.cache/helia-model-zoo`). A cached file is
+  checked again on every fetch.
+
+### Private entries
+
+Private models never enter this repository. Their entries live in an overlay
+manifest that only its users can read; `HELIA_ZOO_OVERLAY` names it (a local
+path or an `hf://` URI), and its entries join the packaged ones. Before pushing
+any change here, run
+
+```bash
+helia-zoo guard --overlay "$HELIA_ZOO_OVERLAY" --text pr-body.md
+```
+
+It refuses if any overlay ID, alias, Hugging Face repository or artifact sha256
+appears in a tracked or untracked file, in a commit message since `origin/main`,
+or in the extra text files.
 
 ## Domains
 

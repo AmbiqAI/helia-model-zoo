@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 from importlib import metadata
@@ -13,9 +12,10 @@ from typing import Any
 
 import numpy as np
 
+from .hydrate import LFS_POINTER_PREFIX, FetchError, fetch_file, sha256_file
 from .manifest import Entry, FileRef, Manifest, Precision, Tensor, load_manifest
 
-LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
+__all__ = ["ValidationError", "sha256_file", "validate"]
 
 
 class ValidationError(ValueError):
@@ -26,17 +26,20 @@ class ValidationError(ValueError):
         self.problems = problems
 
 
-def sha256_file(path: Path) -> str:
-    """Hex sha256 of a file's bytes."""
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _check_file(
+    root: Path, ref: FileRef, where: str, problems: list[str], cache: Path | None = None, anonymous: bool = True
+) -> Path | None:
+    """Check that a file exists and, for an artifact, that its bytes are hydrated and match.
 
-
-def _check_file(root: Path, ref: FileRef, where: str, problems: list[str]) -> Path | None:
-    """Check that a file exists and, for an artifact, that its bytes are hydrated and match."""
+    A file outside this repository is fetched, without credentials when ``anonymous``.
+    """
+    if not ref.in_repository:
+        try:
+            return fetch_file(ref, cache=cache, anonymous=anonymous)
+        except FetchError as error:
+            note = " (fetched without credentials, as a public entry must be)" if anonymous else ""
+            problems.append(f"{where}: {error}{note}")
+            return None
     try:
         path = ref.resolve(root)
     except ValueError as error:
@@ -51,7 +54,7 @@ def _check_file(root: Path, ref: FileRef, where: str, problems: list[str]) -> Pa
         if stream.read(len(LFS_POINTER_PREFIX)) == LFS_POINTER_PREFIX:
             problems.append(f"{where}: unresolved Git LFS pointer {ref.uri}")
             return None
-    if path.stat().st_size != ref.bytes:
+    if ref.bytes is not None and path.stat().st_size != ref.bytes:
         problems.append(f"{where}: {ref.uri} is {path.stat().st_size} bytes, expected {ref.bytes}")
         return None
     actual = sha256_file(path)
@@ -203,7 +206,7 @@ def _check_v1(manifest: Manifest, v1_path: Path, problems: list[str]) -> None:
                 item["reference_runtime_version"],
                 golden and golden.reference_runtime_version,
             ),
-            ("provenance_reference", f"repo://{item['provenance_reference']}", entry.card.uri),
+            ("provenance_reference", f"repo://{item['provenance_reference']}", entry.card_file.uri),
             ("license_reference", f"repo://{item['license_reference']}", entry.license.reference.uri),
         ]
         for key, old, new in pairs:
@@ -219,6 +222,7 @@ def validate(
     replay: bool = False,
     v1: Path | None = None,
     public: bool = True,
+    cache: Path | None = None,
 ) -> None:
     """Validate every entry of a manifest against a hydrated checkout.
 
@@ -229,7 +233,9 @@ def validate(
         replay: Also run each single golden and require its outputs exactly, under its recorded resolver
             and its recorded LiteRT version (a different installed version is reported, not compared).
         v1: A frozen v1 manifest whose entries must equal their v2 aliases.
-        public: Refuse any entry that is not public (the rule for this public repository).
+        public: Refuse any entry that is not public (the rule for this public repository), and fetch
+            files from outside this repository without credentials.
+        cache: Where to fetch files from outside this repository (default ``hydrate.cache_dir()``).
 
     Raises:
         ValidationError: Listing every problem found.
@@ -244,12 +250,12 @@ def validate(
         if public and entry.visibility != "public":
             problems.append(f"{where}: visibility is {entry.visibility!r}; this manifest holds public entries only")
             continue
-        _check_file(root, entry.card, f"{where}.card", problems)
-        _check_file(root, entry.license.reference, f"{where}.license.reference", problems)
+        _check_file(root, entry.card_file, f"{where}.card", problems, cache, public)
+        _check_file(root, entry.license.reference, f"{where}.license.reference", problems, cache, public)
         for precision in entry.precisions.values():
             pwhere = f"{where}.precisions.{precision.name}"
             _check_state_pairs(entry, precision, pwhere, problems)
-            model = _check_file(root, precision.model, f"{pwhere}.model", problems)
+            model = _check_file(root, precision.model, f"{pwhere}.model", problems, cache, public)
             if model is not None and signatures:
                 before = len(problems)
                 _check_signature(precision, model, pwhere, problems)
@@ -257,7 +263,7 @@ def validate(
                     model = None
             if precision.golden is None:
                 continue
-            golden = _check_file(root, precision.golden.file, f"{pwhere}.golden", problems)
+            golden = _check_file(root, precision.golden.file, f"{pwhere}.golden", problems, cache, public)
             if golden is not None:
                 _check_golden(precision, golden, model if signatures else None, replay, pwhere, problems)
     if v1 is not None:
