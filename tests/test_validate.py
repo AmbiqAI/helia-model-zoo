@@ -172,3 +172,13 @@ def test_cli(root, tmp_path, capsys):
     assert main(["validate", "--root", str(root), "--replay", "--no-signatures"]) == 2
     assert main(["validate", "--root", str(tmp_path), "--no-signatures", "--no-v1"]) == 1
     assert "problem(s)" in capsys.readouterr().err
+
+
+def test_cli_without_litert_explains_the_extra(root, monkeypatch, capsys):
+    def missing():
+        raise ImportError("signature and replay checks need LiteRT: install helia-model-zoo[litert]")
+
+    monkeypatch.setattr("helia_model_zoo.validate._litert", missing)
+    assert main(["validate", "--root", str(root)]) == 2
+    assert "install helia-model-zoo[litert]" in capsys.readouterr().err
+    assert main(["validate", "--root", str(root), "--no-signatures"]) == 0

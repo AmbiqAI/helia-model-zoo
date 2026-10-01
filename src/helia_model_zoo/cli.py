@@ -42,6 +42,9 @@ def _validate(args: argparse.Namespace) -> int:
         return 2
     try:
         validate(root, load_manifest(args.manifest), signatures=not args.no_signatures, replay=args.replay, v1=v1)
+    except ImportError as error:
+        print(error, file=sys.stderr)
+        return 2
     except ValidationError as error:
         for problem in error.problems:
             print(problem, file=sys.stderr)
