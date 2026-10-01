@@ -60,6 +60,14 @@ input generation, changed outputs, representative and maximum numerical
 differences from the prior fixture, and approval from the model/corpus owner.
 Release goldens must not be generated with helia-aot.
 
+## License
+
+The code, documentation and tooling here are licensed under the
+[BSD 3-Clause License](LICENSE). Model artifacts keep the license of their
+upstream source, and each golden fixture follows its model; [NOTICE](NOTICE)
+lists them, and each model card records its source, license, training and
+conversion.
+
 ## Domains
 
 - [Audio](audio/README.md)

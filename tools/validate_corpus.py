@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Ambiq AI
+# SPDX-License-Identifier: BSD-3-Clause
 """Validate the model-zoo corpus manifest and its hydrated artifacts."""
 
 from __future__ import annotations

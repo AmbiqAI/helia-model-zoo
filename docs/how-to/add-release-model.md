@@ -40,6 +40,11 @@ Document:
 - any conversion, quantization, or other transformation applied to the
   checked-in artifact.
 
+Record these in the card's `Source`, `License`, `Training` and
+`Conversion` rows, pinning the upstream revision. Mark anything you cannot
+confirm `TODO(verify)` rather than guessing. Add the model to [NOTICE](../../NOTICE),
+and add its license text under `licenses/` when that license requires it.
+
 Referencing an upstream license records the terms under which the third-party
 model is distributed; it does not imply that Ambiq created or relicensed it.
 

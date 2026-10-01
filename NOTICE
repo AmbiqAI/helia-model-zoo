@@ -1,0 +1,36 @@
+helia-model-zoo
+Copyright (c) 2026, Ambiq AI
+
+The code, documentation and tooling in this repository are licensed under the
+BSD 3-Clause License (see LICENSE).
+
+Model artifacts (`*.tflite`) are not covered by that license. Each remains under
+the license of its upstream source; including it here does not relicense it.
+Golden fixtures (`golden.npz`) are produced by running a model on generated
+inputs and are distributed under the same terms as that model. Each model card
+(`<domain>/<family?>/<model>/README.md`) records the source, license, training
+and any conversion. Entries marked TODO(verify) are unconfirmed.
+
+Third-party models
+------------------
+
+MLPerf Tiny (https://github.com/mlcommons/tiny), Apache License 2.0
+(licenses/Apache-2.0.txt):
+  - anomaly-detection/mlperf-tiny/ad01      (ad01_int8.tflite)
+  - audio/mlperf-tiny/kws_ref               (kws_ref_model.tflite)
+  - audio/mlperf-tiny/strm_ww               (strm_ww_int8.tflite)
+  - vision/mlperf-tiny/resnet               (pretrainedResnet_quant.tflite)
+  - vision/mlperf-tiny/vww                  (vww_96_int8.tflite)
+
+Arm ML-Zoo (https://github.com/ARM-software/ML-zoo), Apache License 2.0
+(licenses/Apache-2.0.txt):
+  - audio/rnnoise                           (rnnoise_INT8.tflite)
+  - audio/wav2letter                        (wav2letter_pruned_int8.tflite)
+  - vision/mobilenet_v2                     (mobilenet_v2_1.0_224_INT8.tflite)
+
+Derived from third-party models (conversion source and license TODO(verify)):
+  - audio/dfnet2    DeepFilterNet2, https://github.com/Rikorose/DeepFilterNet,
+                    MIT OR Apache-2.0, Copyright (c) 2021 Hendrik Schröter
+                    (licenses/DeepFilterNet-MIT.txt)
+  - audio/gtcrn     GTCRN, https://github.com/Xiaobin-Rong/gtcrn,
+                    MIT, Copyright (c) 2024 Rong Xiaobin (licenses/gtcrn-MIT.txt)
