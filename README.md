@@ -48,7 +48,7 @@ helia-zoo golden check model.tflite golden.npz --kind sequence --steps 64 --rese
 ```
 
 State pairs come from a manifest entry (`--entry`), from `--pair IN:OUT`, or
-from `state_in_k`/`state_out_k` signature names; a sequence without any state
+from `state_in_k`/`state_out_k` signature or tensor names; a sequence without any state
 pair is refused. Inputs not given with `--data` are drawn from `--seed`; when
 `--print-manifest` records a `--data` source, `--data` must give every
 non-state input. New goldens use LiteRT's reference kernels

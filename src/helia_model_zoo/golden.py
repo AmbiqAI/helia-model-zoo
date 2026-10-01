@@ -300,6 +300,22 @@ def state_pairs_from_names(
     )
 
 
+def pairs_by_index(
+    inputs: Sequence[Tensor], outputs: Sequence[Tensor], indices: Sequence[tuple[int, int]]
+) -> tuple[StatePair, ...]:
+    """State pairs from ``(input index, output index)`` tuples.
+
+    Raises:
+        GoldenError: If an index is out of range.
+    """
+    pairs = []
+    for i, o in indices:
+        if not (0 <= i < len(inputs) and 0 <= o < len(outputs)):
+            raise GoldenError(f"pair {i}:{o} is out of range for {len(inputs)} inputs and {len(outputs)} outputs")
+        pairs.append(StatePair(i, o, "zeros", inputs[i].scale == outputs[o].scale))
+    return tuple(pairs)
+
+
 def check(
     model: Path,
     golden_path: Path,
@@ -326,12 +342,12 @@ def check(
         if state_pairs is None:
             pairs = state_pairs_from_names(inputs, outputs, signature_names(model))
         else:
-            pairs = tuple(StatePair(i, o, "zeros", inputs[i].scale == outputs[o].scale) for i, o in state_pairs)
-    except (GoldenError, IndexError) as error:
+            pairs = pairs_by_index(inputs, outputs, state_pairs)
+    except GoldenError as error:
         return [f"golden: state pairs: {error}"]
     io = IO("explicit_state" if pairs else "stateless", pairs)
     version = reference_runtime_version or runtime_version("ai-edge-litert") or "unknown"
-    if (reason := _shape_rules(IO("explicit_state" if pairs else "stateless", pairs), kind, steps, resets)) is not None:
+    if (reason := _shape_rules(io, kind, steps, resets)) is not None:
         return [f"golden: {reason}"]
     file = FileRef(f"repo://{Path(golden_path).name}")
     meta = Golden(file, kind, steps, tuple(resets), None, "ai-edge-litert", version, resolver)
@@ -370,6 +386,7 @@ __all__ = [
     "generate",
     "load_golden",
     "manifest_block",
+    "pairs_by_index",
     "replay_arrays",
     "reset_value",
     "state_pairs_from_names",

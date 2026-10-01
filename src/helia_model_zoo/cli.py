@@ -129,7 +129,7 @@ def _pairs(values: list[str]) -> list[tuple[int, int]] | None:
     pairs = []
     for value in values:
         parts = value.split(":")
-        if len(parts) != 2 or not all(p.isdigit() for p in parts):
+        if len(parts) != 2 or not all(re.fullmatch("[0-9]+", p) for p in parts):
             raise ValueError(f"--pair expects IN:OUT input and output indices, got {value!r}")
         pairs.append((int(parts[0]), int(parts[1])))
     return pairs
@@ -139,7 +139,7 @@ def _golden_generate(args: argparse.Namespace) -> int:
     import numpy as np
 
     from . import golden
-    from .manifest import IO, FileRef, Golden, Precision, StatePair
+    from .manifest import IO, FileRef, Golden, Precision
     from .runtime import model_tensors, runtime_version, signature_names
 
     if args.print_manifest and args.data and not (args.source_uri and args.source_sha256):
@@ -157,9 +157,7 @@ def _golden_generate(args: argparse.Namespace) -> int:
             inputs, outputs = model_tensors(args.model)
             precision = Precision("model", FileRef("repo://model"), inputs, outputs, None)
             if args.pair:
-                pairs = tuple(
-                    StatePair(i, o, "zeros", inputs[i].scale == outputs[o].scale) for i, o in _pairs(args.pair)
-                )
+                pairs = golden.pairs_by_index(inputs, outputs, _pairs(args.pair))
             else:
                 pairs = golden.state_pairs_from_names(inputs, outputs, signature_names(args.model))
             io = IO("explicit_state" if pairs else "stateless", pairs)
@@ -185,7 +183,7 @@ def _golden_generate(args: argparse.Namespace) -> int:
             seed=args.seed,
             resolver=args.resolver,
         )
-    except (KeyError, IndexError, ValueError) as error:
+    except (KeyError, ValueError, OSError) as error:
         print(error.args[0] if isinstance(error, KeyError) else error, file=sys.stderr)
         return 1
     golden.write(args.out, arrays)
@@ -215,16 +213,20 @@ def _golden_check(args: argparse.Namespace) -> int:
     except ValueError as error:
         print(error, file=sys.stderr)
         return 2
-    problems = golden.check(
-        args.model,
-        args.golden,
-        kind=args.kind,
-        steps=args.steps,
-        resets=_steps(args.resets),
-        state_pairs=pairs,
-        resolver=args.resolver,
-        replay=not args.no_replay,
-    )
+    try:
+        problems = golden.check(
+            args.model,
+            args.golden,
+            kind=args.kind,
+            steps=args.steps,
+            resets=_steps(args.resets),
+            state_pairs=pairs,
+            resolver=args.resolver,
+            replay=not args.no_replay,
+        )
+    except (OSError, ValueError) as error:
+        print(error, file=sys.stderr)
+        return 2
     for problem in problems:
         print(problem, file=sys.stderr)
     if problems:
@@ -279,7 +281,11 @@ def main(argv: list[str] | None = None) -> int:
     make.add_argument("--entry", help="take tensors and state pairs from this manifest entry (ID or alias)")
     make.add_argument("--precision", help="the entry's precision")
     make.add_argument("--seed", type=int, default=42, help="seed for inputs not given by --data")
-    make.add_argument("--data", type=Path, help="NPZ of input_i arrays [steps, *shape] for data inputs")
+    make.add_argument(
+        "--data",
+        type=Path,
+        help="NPZ of input_i arrays for data inputs: [steps, *shape], or shape for a single golden",
+    )
     make.add_argument("--print-manifest", action="store_true", help="print the manifest golden block")
     make.add_argument("--uri", help="the golden's manifest URI, for --print-manifest")
     make.add_argument("--source-uri", help="where --data came from, for --print-manifest")

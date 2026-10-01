@@ -635,3 +635,16 @@ def test_drawn_inputs_match_the_original_generator(rnnoise):
     rng = np.random.default_rng(7)
     for i, tensor in enumerate(precision.inputs):
         assert np.array_equal(arrays[f"input_{i}"], rng.integers(-8, 8, size=tensor.shape, dtype=np.int8))
+
+
+def test_cli_reports_bad_pairs_and_missing_files(root, tmp_path, capsys):
+    model = str(root / DFNET2)
+    out = str(tmp_path / "g.npz")
+    assert main(["golden", "generate", model, out, "--kind", "sequence", "--steps", "2", "--pair", "9:9"]) == 1
+    assert "pair 9:9 is out of range for 3 inputs and 5 outputs" in capsys.readouterr().err
+    assert main(["golden", "generate", model, out, "--pair", "²:1"]) == 1
+    assert "--pair expects IN:OUT" in capsys.readouterr().err
+    assert main(["golden", "generate", model, out, "--data", str(tmp_path / "missing.npz")]) == 1
+    assert "missing.npz" in capsys.readouterr().err
+    assert main(["golden", "check", model, str(tmp_path / "missing.npz")]) == 2
+    assert "missing.npz" in capsys.readouterr().err
