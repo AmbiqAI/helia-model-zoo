@@ -285,3 +285,8 @@ def test_conflicted_index_is_scanned(repo, overlay):
     subprocess.run(["git", "-C", str(repo), "merge", "-q", "side"], capture_output=True)
     (repo / "c.md").write_text("resolved but not staged\n")
     assert any(w.startswith("index c.md") for w in wheres(repo, overlay))
+
+
+def test_untracked_file_with_a_non_utf8_name_is_read(repo, overlay):
+    (repo / b"draft-\xff.md".decode("utf-8", "surrogateescape")).write_text("secret-enhancer\n")
+    assert any(w.startswith("draft-") and w.endswith(".md:1") for w in wheres(repo, overlay))

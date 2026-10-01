@@ -191,7 +191,8 @@ def scan(
     for path, blob in index:
         scanner.data(contents[blob], f"index {path}")
     listing = _git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", binary=True)
-    for name in sorted({n.decode(errors="replace") for n in listing.split(b"\0") if n}):
+    # os.fsdecode keeps undecodable bytes (surrogateescape), so the file can still be opened.
+    for name in sorted({os.fsdecode(n) for n in listing.split(b"\0") if n}):
         scanner.text(name, f"path {name}", lines=False)
         path = root / name
         if path.is_symlink():
