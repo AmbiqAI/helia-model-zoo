@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Ambiq AI
 # SPDX-License-Identifier: BSD-3-Clause
 import hashlib
+import http.client
 import json
 import os
 import sys
@@ -399,7 +400,7 @@ def test_download_stops_past_the_expected_size(monkeypatch, tmp_path):
     assert [p for p in (tmp_path / "cache").rglob("*") if p.is_file()] == []
 
 
-@pytest.mark.parametrize("error", [__import__("http.client").client.IncompleteRead(b"x"), ValueError("bad url")])
+@pytest.mark.parametrize("error", [http.client.IncompleteRead(b"x"), ValueError("bad url")])
 def test_transport_errors_become_fetch_errors(monkeypatch, error):
     def failing(url, timeout):
         raise error

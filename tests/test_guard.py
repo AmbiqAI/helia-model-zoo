@@ -246,3 +246,42 @@ def test_cli_guard_defaults_to_origin_main(repo, tmp_path, data):
     assert main(["guard", "--overlay", overlay, "--root", str(repo)]) == 0
     git(repo, "update-ref", "refs/remotes/origin/main", "base")
     assert main(["guard", "--overlay", overlay, "--root", str(repo)]) == 1
+
+
+def test_name_added_while_resolving_a_merge_is_found(repo, overlay):
+    commit(repo, "a.md", "one\n")
+    git(repo, "checkout", "-q", "-b", "side", "base")
+    commit(repo, "b.md", "two\n")
+    git(repo, "checkout", "-q", "main")
+    git(repo, "merge", "-q", "--no-ff", "--no-commit", "side")
+    (repo / "b.md").write_text("two, via secret-enhancer\n")
+    git(repo, "add", "b.md")
+    git(repo, "commit", "-q", "-m", "Merge branch side")
+    commit(repo, "b.md", "two\n")
+    found = wheres(repo, overlay)
+    assert len(found) == 1 and found[0].startswith("commit ") and found[0].endswith(" b.md:1")
+
+
+def test_submodule_and_odd_file_names_do_not_stop_the_scan(repo, overlay):
+    sub = repo.parent / "sub"
+    sub.mkdir()
+    git(sub, "init", "-q")
+    git(sub, "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init")
+    head = subprocess.run(["git", "-C", str(sub), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    git(repo, "update-index", "--add", "--cacheinfo", f"160000,{head},vendor")
+    git(repo, "commit", "-q", "-m", "chore: add submodule")
+    (repo / b"caf\xe9-secret-enhancer.md".decode("utf-8", "surrogateescape")).write_text("x\n")
+    found = wheres(repo, overlay)
+    assert any("secret-enhancer.md" in w and w.startswith("path ") for w in found)
+
+
+def test_conflicted_index_is_scanned(repo, overlay):
+    commit(repo, "c.md", "base\n")
+    git(repo, "branch", "-f", "base")
+    git(repo, "checkout", "-q", "-b", "side")
+    commit(repo, "c.md", "theirs mention secret-enhancer\n")
+    git(repo, "checkout", "-q", "main")
+    commit(repo, "c.md", "ours\n")
+    subprocess.run(["git", "-C", str(repo), "merge", "-q", "side"], capture_output=True)
+    (repo / "c.md").write_text("resolved but not staged\n")
+    assert any(w.startswith("index c.md") for w in wheres(repo, overlay))

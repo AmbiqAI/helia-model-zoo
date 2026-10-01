@@ -122,8 +122,7 @@ Files are fetched as follows:
 Private models never enter this repository. Their entries live in an overlay
 manifest that only its users can read; `HELIA_ZOO_OVERLAY` names it (a local
 path or an `hf://` URI, read once per process), and its entries join the
-packaged ones. Before pushing
-any change here, run
+packaged ones. Before pushing any change here, run
 
 ```bash
 helia-zoo guard --overlay "$HELIA_ZOO_OVERLAY" --text pr-body.md

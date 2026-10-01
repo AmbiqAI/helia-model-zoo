@@ -137,7 +137,11 @@ def _blobs(root: Path, ids: list[str]) -> dict[str, bytes]:
     blobs, offset = {}, 0
     for blob in unique:
         header_end = out.index(b"\n", offset)
-        name, kind, size = out[offset:header_end].split(b" ")
+        header = out[offset:header_end].split(b" ")
+        if len(header) != 3:  # "<id> missing", e.g. a submodule commit: no content here to scan
+            blobs[blob], offset = b"", header_end + 1
+            continue
+        name, kind, size = header
         start = header_end + 1
         blobs[blob] = out[start : start + int(size)] if kind == b"blob" else b""
         offset = start + int(size) + 1
@@ -166,9 +170,13 @@ def scan(
     for commit in revisions:
         header = _git(root, "show", "-s", "--format=%an <%ae>%n%cn <%ce>%n%B", commit)
         scanner.text(header, f"commit {commit[:12]}")
-        raw = _git(root, "diff-tree", "-r", "-z", "--no-commit-id", "--root", "--no-renames", commit, binary=True)
+        # -m: a merge is compared with each parent, so content added while resolving it is seen.
+        raw = _git(root, "diff-tree", "-r", "-m", "-z", "--no-commit-id", "--root", "--no-renames", commit, binary=True)
         fields = raw.split(b"\0")
-        changes = [(fields[i].split(b" ")[3].decode(), fields[i + 1].decode()) for i in range(0, len(fields) - 1, 2)]
+        changes = [
+            (fields[i].split(b" ")[3].decode(), fields[i + 1].decode(errors="replace"))
+            for i in range(0, len(fields) - 1, 2)
+        ]
         added = [(blob, path) for blob, path in changes if set(blob) != {"0"}]
         for blob, path in changes:
             scanner.text(path, f"commit {commit[:12]} path {path}", lines=False)
@@ -176,13 +184,14 @@ def scan(
         for blob, path in added:
             scanner.data(contents[blob], f"commit {commit[:12]} {path}")
     staged = _git(root, "ls-files", "-z", "--stage", binary=True).split(b"\0")
-    entries = [line.decode().split("\t", 1) for line in staged if line]
-    index = {path: meta.split(" ")[1] for meta, path in entries}
-    contents = _blobs(root, list(index.values()))
-    for path, blob in index.items():
+    # Every stage of every path, so each side of an unresolved conflict is read.
+    entries = [line.decode(errors="replace").split("\t", 1) for line in staged if line]
+    index = [(path, meta.split(" ")[1]) for meta, path in entries]
+    contents = _blobs(root, [blob for _, blob in index])
+    for path, blob in index:
         scanner.data(contents[blob], f"index {path}")
-    listing = _git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
-    for name in sorted(set(filter(None, listing.split("\0")))):
+    listing = _git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", binary=True)
+    for name in sorted({n.decode(errors="replace") for n in listing.split(b"\0") if n}):
         scanner.text(name, f"path {name}", lines=False)
         path = root / name
         if path.is_symlink():
