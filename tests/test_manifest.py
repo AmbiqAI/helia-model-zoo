@@ -50,9 +50,9 @@ CASES = {
         "missing precision",
     ),
     "bad sha256": ("rnnoise", lambda e: e["precisions"]["int8"]["model"].update(sha256="ABC"), "sha256"),
-    "remote scheme": ("rnnoise", lambda e: e["precisions"]["int8"]["model"].update(uri="https://x/m.tflite"), "scheme"),
-    "absolute path": ("rnnoise", lambda e: e["card"].update(uri="repo:///etc/passwd"), "inside the repository"),
-    "parent path": ("rnnoise", lambda e: e["card"].update(uri="repo://../x.md"), "inside the repository"),
+    "remote scheme": ("rnnoise", lambda e: e["precisions"]["int8"]["model"].update(uri="ftp://x/m.tflite"), "scheme"),
+    "absolute path": ("rnnoise", lambda e: e["card"].update(uri="repo:///etc/passwd"), "absolute or contain"),
+    "parent path": ("rnnoise", lambda e: e["card"].update(uri="repo://../x.md"), "absolute or contain"),
     "unknown precision": ("rnnoise", lambda e: e["precisions"].update(int4=e["precisions"]["int8"]), "expected one of"),
     "single with steps": ("rnnoise", lambda e: GOLDEN(e).update(steps=2), "exactly one step"),
     "resets outside a sequence": (

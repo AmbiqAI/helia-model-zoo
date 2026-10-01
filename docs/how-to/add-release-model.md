@@ -104,7 +104,8 @@ The v2 fields:
 - `tier` is `converted` for a model we run but do not train (every current
   entry), or `native` for one whose architecture helia-edge can build and train.
 - Artifacts use `lfs://` paths with `sha256` and `bytes` of the hydrated file;
-  cards and license references use `repo://` paths.
+  cards and license references use `repo://` paths. An `https://` or `hf://`
+  source in this manifest must download without credentials, which CI checks.
 - `io.streaming` is `stateless`, `explicit_state` (state passed as inputs and
   outputs, listed in `state_pairs`) or `internal_state` (state kept inside the
   model).
