@@ -21,10 +21,38 @@ The template in `convert-yaml/convert.yaml` is a `heliaAOT` conversion template.
 
 ## Golden fixtures
 
-Golden fixtures are stored as `.npz` files with a stable key layout:
+Golden fixtures are stored as uncompressed `.npz` files with a stable key
+layout, in the model's input and output order:
 
 - `input_0`, `input_1`, ...
 - `output_0`, `output_1`, ...
+
+Each array holds the raw values fed to or produced by the model. A golden's
+`kind` is one of:
+
+- `single`: one call;
+- `batch`: `steps` independent calls, each with a leading array axis;
+- `sequence`: `steps` calls of a streaming model, where each explicit state
+  input takes the previous call's paired output, except at step 0 and at the
+  steps listed in `resets`.
+
+A state starts from real zero, which a quantized tensor stores as its zero
+point. A quantized sequence needs each state pair to share its scale and zero
+point, so the state is carried exactly.
+
+```bash
+helia-zoo golden generate model.tflite golden.npz --kind sequence --steps 64 \
+    --resets 32 --data inputs.npz --print-manifest --uri lfs://audio/x/golden.npz \
+    --source-uri https://example.com/clip.wav --source-sha256 <sha256>
+helia-zoo golden check model.tflite golden.npz --kind sequence --steps 64 --resets 32
+```
+
+State pairs come from a manifest entry (`--entry`), from `--pair IN:OUT`, or
+from `state_in_k`/`state_out_k` signature names. Inputs not given with `--data`
+are drawn from `--seed`. New goldens use LiteRT's reference kernels
+(`builtin_ref`) unless `--resolver` says otherwise. In Python,
+`helia_model_zoo.golden.check()` checks one golden file against its model
+without a manifest entry.
 
 Two manifests pin every model/golden pair by SHA-256:
 
@@ -64,6 +92,9 @@ python -m pip install -r tools/golden-requirements.txt
 python tools/generate_golden.py path/to/model.tflite path/to/golden.npz --seed 42
 python tools/validate_corpus.py corpus-manifest-v1.json
 ```
+
+`tools/generate_golden.py` writes a `single` golden with LiteRT's reference
+kernels; `--resolver builtin` selects the optimized kernels instead.
 
 After intentionally changing a golden, update its manifest digest. The review
 description must state the reference runtime/version, seed and any non-default
