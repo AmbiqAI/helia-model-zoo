@@ -97,6 +97,24 @@ scale and zero point from the model, record the LiteRT resolver its golden
 replays under (`builtin_ref` for new goldens), and list explicit state pairs
 under `io.state_pairs`. CI refuses a v2 entry that disagrees with its v1 alias.
 
+The v2 fields:
+
+- `visibility` must be `public`: this repository is public, and CI refuses any
+  other entry.
+- `tier` is `converted` for a model we run but do not train (every current
+  entry), or `native` for one whose architecture helia-edge can build and train.
+- Artifacts use `lfs://` paths with `sha256` and `bytes` of the hydrated file;
+  cards and license references use `repo://` paths.
+- `io.streaming` is `stateless`, `explicit_state` (state passed as inputs and
+  outputs, listed in `state_pairs`) or `internal_state` (state kept inside the
+  model).
+- A state pair names the input and output indices, its `reset` value (`zeros`
+  is real-valued zero, which a quantized tensor stores as its zero point), and
+  `scales_tied`: whether the two tensors share a scale, so the output can be fed
+  back unchanged.
+- A golden's `kind` is `single`; `batch` and `sequence` goldens add a leading
+  axis of `steps` and are not used yet.
+
 Generate each digest from the hydrated file bytes, not from a Git LFS pointer:
 
 ```bash

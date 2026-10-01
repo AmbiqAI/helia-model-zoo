@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -34,16 +35,13 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _resolve(root: Path, ref: FileRef) -> Path:
-    candidate = (root / ref.path).resolve()
-    if not candidate.is_relative_to(root):
-        raise ValueError(f"{ref.uri} escapes the repository root")
-    return candidate
-
-
 def _check_file(root: Path, ref: FileRef, where: str, problems: list[str]) -> Path | None:
     """Check that a file exists and, for an artifact, that its bytes are hydrated and match."""
-    path = _resolve(root, ref)
+    try:
+        path = ref.resolve(root)
+    except ValueError as error:
+        problems.append(f"{where}: {error}")
+        return None
     if not path.is_file():
         problems.append(f"{where}: missing file {ref.uri}")
         return None
@@ -69,6 +67,13 @@ def _litert() -> Any:
     except ImportError as error:
         raise ImportError("signature and replay checks need LiteRT: install helia-model-zoo[litert]") from error
     return interpreter
+
+
+def _runtime_version(distribution: str) -> str | None:
+    try:
+        return metadata.version(distribution)
+    except metadata.PackageNotFoundError:
+        return None
 
 
 def _interpreter(model: Path, resolver: str | None = None) -> Any:
@@ -147,6 +152,13 @@ def _check_golden(
             return
         if golden.kind != "single":
             problems.append(f"{where}.golden: replay of {golden.kind} goldens is not supported yet")
+            return
+        installed = _runtime_version(golden.reference_runtime)
+        if installed != golden.reference_runtime_version:
+            problems.append(
+                f"{where}.golden: replay needs {golden.reference_runtime} "
+                f"{golden.reference_runtime_version}; installed: {installed}"
+            )
             return
         interpreter = _interpreter(model, golden.resolver)
         try:
@@ -238,7 +250,10 @@ def validate(
             _check_state_pairs(entry, precision, pwhere, problems)
             model = _check_file(root, precision.model, f"{pwhere}.model", problems)
             if model is not None and signatures:
+                before = len(problems)
                 _check_signature(precision, model, pwhere, problems)
+                if len(problems) > before:
+                    model = None
             if precision.golden is None:
                 continue
             golden = _check_file(root, precision.golden.file, f"{pwhere}.golden", problems)

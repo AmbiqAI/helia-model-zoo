@@ -23,7 +23,7 @@ build-backend = "hatchling.build"
 packages = ["src/helia_model_zoo"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "LICENSE", "NOTICE", "README.md", "pyproject.toml"]
+include = ["src", "LICENSE", "NOTICE", "README.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

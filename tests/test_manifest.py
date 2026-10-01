@@ -76,6 +76,38 @@ CASES = {
     ),
     "short upstream revision": ("rnnoise", lambda e: e["upstream"].update(revision="fec0bb5b"), "40-hex"),
     "bad visibility": ("rnnoise", lambda e: e.update(visibility="internal"), "expected one of"),
+    "output paired twice": ("rnnoise", lambda e: e["io"]["state_pairs"][1].update(output=3), "paired twice"),
+    "missing key": ("rnnoise", lambda e: e.pop("tier"), "missing"),
+    "missing artifact size": ("rnnoise", lambda e: e["precisions"]["int8"]["model"].pop("bytes"), "missing"),
+    "reset outside the steps": (
+        "rnnoise",
+        lambda e: GOLDEN(e).update(kind="sequence", steps=3, resets=[3]),
+        "step indices",
+    ),
+    "unknown dtype": (
+        "rnnoise",
+        lambda e: e["precisions"]["int8"]["inputs"][0].update(dtype="int4"),
+        "expected one of",
+    ),
+    "zero-byte artifact": ("rnnoise", lambda e: e["precisions"]["int8"]["model"].update(bytes=0), ">= 1"),
+    "unknown tier": ("rnnoise", lambda e: e.update(tier="trained"), "expected one of"),
+    "unknown reset": ("rnnoise", lambda e: e["io"]["state_pairs"][0].update(reset="ones"), "expected one of"),
+    "scales_tied not a boolean": ("rnnoise", lambda e: e["io"]["state_pairs"][0].update(scales_tied=0), "boolean"),
+    "uppercase id": ("rnnoise", lambda e: e.update(id="RNNoise"), "lowercase"),
+    "alias value not a string": ("rnnoise", lambda e: e["aliases"].update({"rnnoise-int8": ["int8"]}), "aliases"),
+    "NaN scale": ("rnnoise", lambda e: e["precisions"]["int8"]["inputs"][0].update(scale=float("nan")), "positive"),
+    "infinite scale": (
+        "rnnoise",
+        lambda e: e["precisions"]["int8"]["inputs"][0].update(scale=float("inf")),
+        "positive",
+    ),
+    "boolean scale": ("rnnoise", lambda e: e["precisions"]["int8"]["inputs"][0].update(scale=True), "positive"),
+    "card in lfs": ("rnnoise", lambda e: e["card"].update(uri="lfs://audio/rnnoise/README.md"), "scheme"),
+    "model in repo scheme": (
+        "rnnoise",
+        lambda e: e["precisions"]["int8"]["model"].update(uri="repo://audio/rnnoise/model.tflite"),
+        "scheme",
+    ),
 }
 
 

@@ -25,13 +25,15 @@ def root():
 
     Tests that need artifacts skip without one, unless HELIA_ZOO_REQUIRE_ARTIFACTS=1 (as in CI).
     """
+    required = os.environ.get("HELIA_ZOO_REQUIRE_ARTIFACTS") == "1"
     path = Path(os.environ.get("HELIA_ZOO_ROOT", REPO)).resolve()
     model = path / "audio/rnnoise/model.tflite"
     if not model.is_file() or model.read_bytes()[: len(POINTER)] == POINTER:
-        if os.environ.get("HELIA_ZOO_REQUIRE_ARTIFACTS") == "1":
-            pytest.fail(f"no hydrated checkout at {path}")
-        pytest.skip(f"no hydrated checkout at {path}")
-    pytest.importorskip("ai_edge_litert")
+        (pytest.fail if required else pytest.skip)(f"no hydrated checkout at {path}")
+    if required:
+        import ai_edge_litert  # noqa: F401
+    else:
+        pytest.importorskip("ai_edge_litert")
     return path
 
 

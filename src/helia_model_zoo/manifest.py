@@ -8,6 +8,7 @@ Standard library only, so consumers without NumPy can read the manifest.
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass
 from importlib import resources
@@ -23,8 +24,10 @@ STREAMING = ("stateless", "explicit_state", "internal_state")
 GOLDEN_KINDS = ("single", "batch", "sequence")
 RESOLVERS = ("builtin", "builtin_ref")
 DTYPES = ("float32", "float16", "int8", "uint8", "int16", "int32", "int64", "bool")
-# repo:// is any file in this repository; lfs:// is a Git LFS file in it.
-SCHEMES = ("repo", "lfs")
+# Artifacts (models, goldens) are Git LFS files in this repository (lfs://);
+# cards and license references are plain files in it (repo://).
+ARTIFACT_SCHEMES = ("lfs",)
+TEXT_SCHEMES = ("repo",)
 
 _ID = re.compile(r"[a-z0-9][a-z0-9.-]*")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -52,6 +55,18 @@ class FileRef:
     def path(self) -> str:
         return self.uri.split("://", 1)[1]
 
+    def resolve(self, root: Path) -> Path:
+        """This file's path in a checkout of this repository.
+
+        Raises:
+            ValueError: If the path leaves ``root``, for example through a symlink.
+        """
+        root = Path(root).resolve()
+        candidate = (root / self.path).resolve()
+        if not candidate.is_relative_to(root):
+            raise ValueError(f"{self.uri} escapes the repository root")
+        return candidate
+
 
 @dataclass(frozen=True)
 class Tensor:
@@ -66,7 +81,12 @@ class Tensor:
 
 @dataclass(frozen=True)
 class StatePair:
-    """An explicit state: ``outputs[output]`` feeds ``inputs[input]`` on the next call."""
+    """An explicit state: ``outputs[output]`` feeds ``inputs[input]`` on the next call.
+
+    ``reset`` is the value that starts a stream: ``"zeros"`` is real-valued zero, which a
+    quantized tensor stores as its zero point. ``scales_tied`` is true when the input and
+    output share a scale, so the output can be copied to the input unchanged.
+    """
 
     input: int
     output: int
@@ -196,10 +216,10 @@ def _sha256(value: Any, where: str) -> str:
     return value
 
 
-def _uri(value: Any, where: str) -> str:
+def _uri(value: Any, where: str, schemes: tuple[str, ...]) -> str:
     match = _URI.fullmatch(_string(value, where))
-    if not match or match["scheme"] not in SCHEMES:
-        raise ManifestError(f"{where}: expected a URI with scheme {list(SCHEMES)}, got {value!r}")
+    if not match or match["scheme"] not in schemes:
+        raise ManifestError(f"{where}: expected a URI with scheme {list(schemes)}, got {value!r}")
     path = match["path"]
     if path.startswith("/") or ".." in Path(path).parts:
         raise ManifestError(f"{where}: path must stay inside the repository: {path!r}")
@@ -210,12 +230,12 @@ def _file(value: Any, where: str, artifact: bool) -> FileRef:
     if artifact:
         data = _object(value, where, {"uri", "sha256", "bytes"})
         return FileRef(
-            _uri(data["uri"], f"{where}.uri"),
+            _uri(data["uri"], f"{where}.uri", ARTIFACT_SCHEMES),
             _sha256(data["sha256"], f"{where}.sha256"),
             _int(data["bytes"], f"{where}.bytes", 1),
         )
     data = _object(value, where, {"uri"})
-    return FileRef(_uri(data["uri"], f"{where}.uri"))
+    return FileRef(_uri(data["uri"], f"{where}.uri", TEXT_SCHEMES))
 
 
 def _tensor(value: Any, where: str) -> Tensor:
@@ -226,7 +246,9 @@ def _tensor(value: Any, where: str) -> Tensor:
     scale, zero_point = data["scale"], data["zero_point"]
     if (scale is None) != (zero_point is None):
         raise ManifestError(f"{where}: scale and zero_point must both be set or both be null")
-    if scale is not None and (not isinstance(scale, (int, float)) or scale <= 0 or type(zero_point) is not int):
+    if scale is not None and (
+        type(scale) not in (int, float) or not math.isfinite(scale) or scale <= 0 or type(zero_point) is not int
+    ):
         raise ManifestError(f"{where}: expected a positive scale and an integer zero_point")
     return Tensor(
         _string(data["name"], f"{where}.name"),
@@ -342,7 +364,9 @@ def _entry(value: Any, where: str) -> Entry:
         for k, v in data["precisions"].items()
     }
     aliases = data["aliases"]
-    if not isinstance(aliases, dict) or not all(isinstance(k, str) and _ID.fullmatch(k) for k in aliases):
+    if not isinstance(aliases, dict) or not all(
+        isinstance(k, str) and _ID.fullmatch(k) and isinstance(v, str) for k, v in aliases.items()
+    ):
         raise ManifestError(f"{where}.aliases: expected an object of ID -> precision")
     for alias, precision in aliases.items():
         if precision not in precisions:
