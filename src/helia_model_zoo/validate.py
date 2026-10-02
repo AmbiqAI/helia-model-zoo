@@ -7,14 +7,13 @@ from __future__ import annotations
 import json
 import math
 import tempfile
-from importlib import metadata
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
+from . import golden, runtime
 from .hydrate import LFS_POINTER_PREFIX, FetchError, fetch_file, sha256_file
-from .manifest import Entry, FileRef, Manifest, Precision, Tensor, load_manifest
+from .manifest import Entry, FileRef, Manifest, Precision, load_manifest
 
 __all__ = ["ValidationError", "sha256_file", "validate"]
 
@@ -65,52 +64,13 @@ def _check_file(
     return path
 
 
-def _litert() -> Any:
-    try:
-        from ai_edge_litert import interpreter
-    except ImportError as error:
-        raise ImportError("signature and replay checks need LiteRT: install helia-model-zoo[litert]") from error
-    return interpreter
-
-
-def _runtime_version(distribution: str) -> str | None:
-    try:
-        return metadata.version(distribution)
-    except metadata.PackageNotFoundError:
-        return None
-
-
-def _interpreter(model: Path, resolver: str | None = None) -> Any:
-    litert = _litert()
-    kinds = {
-        None: litert.OpResolverType.AUTO,
-        "builtin": litert.OpResolverType.BUILTIN,
-        "builtin_ref": litert.OpResolverType.BUILTIN_REF,
-    }
-    interpreter = litert.Interpreter(model_path=str(model), experimental_op_resolver_type=kinds[resolver])
-    interpreter.allocate_tensors()
-    return interpreter
-
-
-def _describe(detail: dict[str, Any]) -> Tensor:
-    scale, zero_point = detail["quantization"]
-    quantized = scale != 0.0
-    return Tensor(
-        detail["name"],
-        tuple(int(d) for d in detail["shape"]),
-        np.dtype(detail["dtype"]).name,
-        float(scale) if quantized else None,
-        int(zero_point) if quantized else None,
-    )
-
-
 def _check_signature(precision: Precision, model: Path, where: str, problems: list[str]) -> None:
-    interpreter = _interpreter(model)
+    interpreter = runtime.interpreter(model)
     for role, details, declared in (
         ("inputs", interpreter.get_input_details(), precision.inputs),
         ("outputs", interpreter.get_output_details(), precision.outputs),
     ):
-        actual = tuple(_describe(d) for d in details)
+        actual = tuple(runtime.describe(d) for d in details)
         if len(actual) != len(declared):
             problems.append(f"{where}.{role}: the model has {len(actual)}, the manifest declares {len(declared)}")
             continue
@@ -134,52 +94,20 @@ def _check_state_pairs(entry: Entry, precision: Precision, where: str, problems:
 
 
 def _check_golden(
-    precision: Precision, golden_path: Path, model: Path | None, replay: bool, where: str, problems: list[str]
+    entry: Entry,
+    precision: Precision,
+    golden_path: Path,
+    model: Path | None,
+    replay: bool,
+    where: str,
+    problems: list[str],
 ) -> None:
-    golden = precision.golden
+    with np.load(golden_path, allow_pickle=False) as loaded:
+        arrays = {key: loaded[key] for key in loaded.files}
     found = len(problems)
-    expected = {f"input_{i}": t for i, t in enumerate(precision.inputs)}
-    expected |= {f"output_{i}": t for i, t in enumerate(precision.outputs)}
-    with np.load(golden_path, allow_pickle=False) as arrays:
-        if set(arrays.files) != expected.keys():
-            problems.append(f"{where}.golden: expected keys {sorted(expected)}, found {sorted(arrays.files)}")
-            return
-        lead = () if golden.kind == "single" else (golden.steps,)
-        for key, tensor in expected.items():
-            array = arrays[key]
-            shape = lead + tensor.shape
-            if len(array.shape) != len(shape) or any(w != -1 and a != w for a, w in zip(array.shape, shape)):
-                problems.append(f"{where}.golden: {key} shape {array.shape}, expected {shape}")
-            if array.dtype.name != tensor.dtype:
-                problems.append(f"{where}.golden: {key} dtype {array.dtype.name}, expected {tensor.dtype}")
-        if not replay or model is None or len(problems) > found:
-            return
-        if golden.kind != "single":
-            problems.append(f"{where}.golden: replay of {golden.kind} goldens is not supported yet")
-            return
-        installed = _runtime_version(golden.reference_runtime)
-        if installed != golden.reference_runtime_version:
-            problems.append(
-                f"{where}.golden: replay needs {golden.reference_runtime} "
-                f"{golden.reference_runtime_version}; installed: {installed}"
-            )
-            return
-        interpreter = _interpreter(model, golden.resolver)
-        try:
-            for index, detail in enumerate(interpreter.get_input_details()):
-                interpreter.set_tensor(detail["index"], arrays[f"input_{index}"])
-            interpreter.invoke()
-        except ValueError as error:
-            problems.append(f"{where}.golden: replay failed: {error}")
-            return
-        for index, detail in enumerate(interpreter.get_output_details()):
-            actual, stored = interpreter.get_tensor(detail["index"]), arrays[f"output_{index}"]
-            if not np.array_equal(actual, stored):
-                worst = np.max(np.abs(actual.astype(np.float64) - stored.astype(np.float64)))
-                problems.append(
-                    f"{where}.golden: output_{index} does not replay exactly under "
-                    f"{golden.resolver} (max abs difference {worst:g})"
-                )
+    golden.check_arrays(arrays, precision, precision.golden, entry.io, f"{where}.golden", problems)
+    if replay and model is not None and len(problems) == found:
+        golden.replay_arrays(model, arrays, precision.golden, entry.io, f"{where}.golden", problems)
 
 
 def _check_v1(manifest: Manifest, v1_path: Path, problems: list[str]) -> None:
@@ -231,8 +159,9 @@ def validate(
         root: The repository checkout that ``lfs://`` and ``repo://`` paths resolve against.
         manifest: The manifest to check; by default the one shipped with this package.
         signatures: Compare declared tensors and goldens with each model (needs the ``litert`` extra).
-        replay: Also run each single golden and require its outputs exactly, under its recorded resolver
-            and its recorded LiteRT version (a different installed version is reported, not compared).
+        replay: Also run every golden call (each batch row and sequence step) and require its outputs
+            exactly, under the golden's recorded resolver and LiteRT version (a different installed
+            version is reported, not compared).
         v1: A frozen v1 manifest whose entries must equal their v2 aliases.
         public: Refuse any entry that is not public (the rule for this public repository), and fetch
             files from outside this repository without credentials, into a fresh cache unless ``cache``
@@ -290,6 +219,6 @@ def _check_entries(
                     model = None
             if precision.golden is None:
                 continue
-            golden = _check_file(root, precision.golden.file, f"{pwhere}.golden", problems, cache, public)
-            if golden is not None:
-                _check_golden(precision, golden, model if signatures else None, replay, pwhere, problems)
+            golden_file = _check_file(root, precision.golden.file, f"{pwhere}.golden", problems, cache, public)
+            if golden_file is not None:
+                _check_golden(entry, precision, golden_file, model if signatures else None, replay, pwhere, problems)

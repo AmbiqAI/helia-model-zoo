@@ -213,9 +213,7 @@ def test_batch_golden_needs_the_step_axis(root, tmp_path, data):
     arrays = dict(np.load(golden))
     write_golden(golden, {k: np.stack([v, v]) for k, v in arrays.items()}, precision)
     validate(tmp_path, parse_manifest(data))
-    assert problems_of(tmp_path, data, replay=True) == [
-        "entry mlperf-tiny-ad01.precisions.int8.golden: replay of batch goldens is not supported yet"
-    ]
+    validate(tmp_path, parse_manifest(data), replay=True)
     write_golden(golden, arrays, precision)
     assert problems_of(tmp_path, data) == [
         "entry mlperf-tiny-ad01.precisions.int8.golden: input_0 shape (1, 640), expected (2, 1, 640)",
@@ -333,7 +331,7 @@ def test_cli_without_litert_explains_the_extra(root, monkeypatch, capsys):
     def missing():
         raise ImportError("signature and replay checks need LiteRT: install helia-model-zoo[litert]")
 
-    monkeypatch.setattr("helia_model_zoo.validate._litert", missing)
+    monkeypatch.setattr("helia_model_zoo.runtime.litert_module", missing)
     assert main(["validate", "--root", str(root)]) == 2
     assert "install helia-model-zoo[litert]" in capsys.readouterr().err
     assert main(["validate", "--root", str(root), "--no-signatures"]) == 0

@@ -61,9 +61,12 @@ python tools/generate_golden.py path/to/model.tflite path/to/golden.npz --seed 4
 ```
 
 The NPZ must contain consecutive `input_N` and `output_N` arrays whose shapes
-and dtypes match the TFLite signature. If the standard generator is unsuitable,
-document the deterministic input-generation method and runtime version in the
-pull request and model card.
+and dtypes match the TFLite signature. The generator uses LiteRT's reference
+kernels (`builtin_ref`); record that resolver in the manifest. For a streaming
+model, prefer a `sequence` golden made from real input
+(`helia-zoo golden generate --kind sequence --data ...`; see the README). If the
+standard generator is unsuitable, document the deterministic input-generation
+method and runtime version in the pull request and model card.
 
 ## 4. Add the manifest entry
 
@@ -113,9 +116,10 @@ The v2 fields:
   is real-valued zero, which a quantized tensor stores as its zero point), and
   `scales_tied`: whether the two tensors share a scale, so the output can be fed
   back unchanged.
-- A golden's `kind` is `single`; `batch` and `sequence` goldens add a leading
-  axis of `steps`, and a sequence lists in `resets` the steps where its state
-  returns to the reset value. Neither is used yet.
+- A golden's `kind` is `single`, `batch` or `sequence`. `batch` and
+  `sequence` goldens add a leading axis of `steps`, and a sequence lists in
+  `resets` the steps where its state returns to the reset value. CI checks the
+  state carry of every sequence exactly and replays every step.
 - `--replay` runs only with the golden's `reference_runtime_version` of LiteRT
   installed, as `tools/golden-requirements.txt` pins it.
 
