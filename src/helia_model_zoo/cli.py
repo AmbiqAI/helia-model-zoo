@@ -15,27 +15,27 @@ from .manifest import ManifestError, load_manifest
 
 
 def _manifest(args: argparse.Namespace):
-    """``--manifest`` if given, else the packaged manifest plus any ``HELIA_ZOO_OVERLAY``."""
-    if args.manifest is not None:
-        return load_manifest(args.manifest)
+    """``--models`` if given, else the packaged records plus any ``HELIA_ZOO_OVERLAY``."""
+    if args.models is not None:
+        return load_manifest(args.models)
     from . import manifest
 
     return manifest()
 
 
 def _list(args: argparse.Namespace) -> int:
-    for entry in _manifest(args).entries:
-        print(f"{entry.id}\t{','.join(entry.precisions)}\t{entry.tier}\t{entry.visibility}\t{entry.title}")
+    for record in _manifest(args).records:
+        print(f"{record.id}\t{','.join(record.precisions)}\t{record.task}\t{record.visibility}\t{record.title}")
     return 0
 
 
 def _show(args: argparse.Namespace) -> int:
     try:
-        entry = _manifest(args).get(args.id)
+        record = _manifest(args).get(args.id)
     except KeyError as error:
         print(error.args[0], file=sys.stderr)
         return 1
-    print(json.dumps(dataclasses.asdict(entry), indent=2))
+    print(json.dumps(dataclasses.asdict(record), indent=2))
     return 0
 
 
@@ -51,8 +51,9 @@ def _validate(args: argparse.Namespace) -> int:
         print(f"v1 manifest not found: {v1} (pass --no-v1 to skip the v1 check)", file=sys.stderr)
         return 2
     try:
-        validate(root, load_manifest(args.manifest), signatures=not args.no_signatures, replay=args.replay, v1=v1)
-    except ImportError as error:
+        records = load_manifest(args.models or root / "models")
+        validate(root, records, signatures=not args.no_signatures, replay=args.replay, v1=v1)
+    except (ImportError, ManifestError) as error:
         print(error, file=sys.stderr)
         return 2
     except ValidationError as error:
@@ -60,7 +61,7 @@ def _validate(args: argparse.Namespace) -> int:
             print(problem, file=sys.stderr)
         print(f"{len(error.problems)} problem(s)", file=sys.stderr)
         return 1
-    print(f"validated {args.manifest or 'the packaged manifest'} against {root}")
+    print(f"validated the records in {args.models or root / 'models'} against {root}")
     return 0
 
 
@@ -69,18 +70,17 @@ def _fetch(args: argparse.Namespace) -> int:
 
     options = {"root": args.root} if args.root else {}
     try:
-        entry, aliased = _manifest(args).resolve(args.id)
-        precision = args.precision or (aliased.name if aliased else None)
-        print(entry.fetch(precision, **options))
+        record = _manifest(args).get(args.id)
+        print(record.fetch(args.precision, **options))
         if args.golden:
             from .hydrate import fetch_file
 
-            golden = entry.precision(precision).golden
+            golden = record.precision(args.precision).golden
             if golden is None:
-                raise KeyError(f"{entry.id} has no golden for that precision")
+                raise KeyError(f"{record.id} has no golden for that precision")
             print(fetch_file(golden.file, **options))
         if args.card:
-            print(entry.card(**options))
+            print(record.card(**options))
     except (KeyError, FetchError) as error:
         print(error.args[0] if isinstance(error, KeyError) else error, file=sys.stderr)
         return 1
@@ -142,17 +142,17 @@ def _golden_generate(args: argparse.Namespace) -> int:
     from .manifest import IO, FileRef, Golden, Precision
     from .runtime import model_tensors, runtime_version, signature_names
 
-    if args.print_manifest and args.data and not (args.source_uri and args.source_sha256):
-        print("--print-manifest with --data needs --source-uri and --source-sha256", file=sys.stderr)
+    if args.print_record and args.data and not (args.source_uri and args.source_sha256):
+        print("--print-record with --data needs --source-uri and --source-sha256", file=sys.stderr)
         return 2
-    if args.entry and args.pair:
-        print("--pair cannot be combined with --entry, whose manifest entry lists the state pairs", file=sys.stderr)
+    if args.record and args.pair:
+        print("--pair cannot be combined with --record, which lists the state pairs", file=sys.stderr)
         return 2
     try:
-        if args.entry:
-            entry, aliased = _manifest(args).resolve(args.entry)
-            precision = entry.precision(args.precision or (aliased.name if aliased else None))
-            io = entry.io
+        if args.record:
+            record = _manifest(args).get(args.record)
+            precision = record.precision(args.precision)
+            io = record.io
         else:
             inputs, outputs = model_tensors(args.model)
             precision = Precision("model", FileRef("repo://model"), inputs, outputs, None)
@@ -168,9 +168,9 @@ def _golden_generate(args: argparse.Namespace) -> int:
                 if bad:
                     raise ValueError(f"--data keys must be input_N, got {bad}")
                 data = {int(key.removeprefix("input_")): loaded[key] for key in loaded.files}
-            stateful = {pair.input for pair in io.state_pairs}
+            stateful = {i for i, _ in precision.pair_indices(io)}
             missing = [i for i in range(len(precision.inputs)) if i not in stateful and i not in data]
-            if args.print_manifest and missing:
+            if args.print_record and missing:
                 raise ValueError(f"--data must give every data input when its source is recorded; missing {missing}")
         arrays = golden.generate(
             args.model,
@@ -187,10 +187,10 @@ def _golden_generate(args: argparse.Namespace) -> int:
         print(error.args[0] if isinstance(error, KeyError) else error, file=sys.stderr)
         return 1
     golden.write(args.out, arrays)
-    if args.print_manifest:
+    if args.print_record:
         source = {"uri": args.source_uri, "sha256": args.source_sha256} if args.data else {"seed": args.seed}
         meta = Golden(
-            FileRef(args.uri or f"lfs://{args.out.name}"),
+            FileRef(f"lfs://{args.path or args.out.name}"),
             args.kind,
             args.steps,
             _steps(args.resets),
@@ -199,7 +199,7 @@ def _golden_generate(args: argparse.Namespace) -> int:
             runtime_version("ai-edge-litert") or "unknown",
             args.resolver,
         )
-        print(json.dumps(golden.manifest_block(args.out, meta), indent=2))
+        print(json.dumps(golden.record_block(args.out, meta), indent=2))
     else:
         print(args.out)
     return 0
@@ -237,13 +237,13 @@ def _golden_check(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="helia-zoo", description=__doc__)
-    parser.add_argument("--manifest", type=Path, help="a manifest@2 file (default: the packaged manifest)")
+    parser.add_argument("--models", type=Path, help="a models directory of records (default: the packaged records)")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("list", help="list entries").set_defaults(run=_list)
-    show = commands.add_parser("show", help="print one entry as JSON")
-    show.add_argument("id", help="model ID or v1 alias")
+    commands.add_parser("list", help="list the records").set_defaults(run=_list)
+    show = commands.add_parser("show", help="print one record as JSON")
+    show.add_argument("id", help="model ID")
     show.set_defaults(run=_show)
-    check = commands.add_parser("validate", help="validate the manifest against a hydrated checkout")
+    check = commands.add_parser("validate", help="validate the records against a hydrated checkout")
     check.add_argument("--root", default=".", help="repository checkout with Git LFS hydrated (default: .)")
     check.add_argument(
         "--replay", action="store_true", help="require each golden to replay exactly; needs the recorded LiteRT version"
@@ -253,8 +253,8 @@ def main(argv: list[str] | None = None) -> int:
     check.add_argument("--no-v1", action="store_true", help="skip the v1 comparison")
     check.set_defaults(run=_validate)
     get = commands.add_parser("fetch", help="print the verified local path of a model (and its golden or card)")
-    get.add_argument("id", help="model ID or alias")
-    get.add_argument("--precision", help="precision (default: the alias's, or the only one)")
+    get.add_argument("id", help="model ID")
+    get.add_argument("--precision", help="precision (default: the only one)")
     get.add_argument("--golden", action="store_true", help="also fetch the golden")
     get.add_argument("--card", action="store_true", help="also fetch the model card")
     get.add_argument("--root", help="hydrated checkout to read repository files from")
@@ -278,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_argument("--pair", action="append", default=[], help="state pair IN:OUT by I/O index (repeatable)")
         sub.add_argument("--resolver", default="builtin_ref", choices=("builtin_ref", "builtin"))
     make.add_argument("out", type=Path, help="NPZ to write")
-    make.add_argument("--entry", help="take tensors and state pairs from this manifest entry (ID or alias)")
+    make.add_argument("--record", help="take tensors and state pairs from this model's record (ID)")
     make.add_argument("--precision", help="the entry's precision")
     make.add_argument("--seed", type=int, default=42, help="seed for inputs not given by --data")
     make.add_argument(
@@ -286,9 +286,9 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="NPZ of input_i arrays for data inputs: [steps, *shape], or shape for a single golden",
     )
-    make.add_argument("--print-manifest", action="store_true", help="print the manifest golden block")
-    make.add_argument("--uri", help="the golden's manifest URI, for --print-manifest")
-    make.add_argument("--source-uri", help="where --data came from, for --print-manifest")
+    make.add_argument("--print-record", action="store_true", help="print the record's golden object")
+    make.add_argument("--path", help="the golden's path in its model directory, for --print-record")
+    make.add_argument("--source-uri", help="where --data came from, for --print-record")
     make.add_argument("--source-sha256", help="sha256 of the --source-uri file")
     make.set_defaults(run=_golden_generate)
     test.add_argument("golden", type=Path, help="NPZ to check")

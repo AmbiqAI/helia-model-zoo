@@ -136,7 +136,9 @@ def _download(ref: FileRef, destination: Path, commit: str | None, anonymous: bo
     if ref.scheme == "hf":
         _download_hf(ref.uri, destination, anonymous)
         return
-    url = ref.uri if ref.scheme == "https" else _url(ref, commit)
+    if not ref.in_repository:
+        raise FetchError(f"{ref.uri}: unsupported source; files come from this repository or hf://")
+    url = _url(ref, commit)
     try:
         _download_url(url, destination, ref.bytes)
     except (OSError, http.client.HTTPException, ValueError) as error:

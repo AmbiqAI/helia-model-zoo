@@ -59,8 +59,8 @@ def reset_value(tensor: Tensor) -> np.ndarray:
     return np.full(tensor.shape, tensor.zero_point or 0, dtype=tensor.dtype)
 
 
-def _tied(precision: Precision, pair: StatePair) -> bool:
-    state_in, state_out = precision.inputs[pair.input], precision.outputs[pair.output]
+def _tied(precision: Precision, pair: tuple[int, int]) -> bool:
+    state_in, state_out = precision.inputs[pair[0]], precision.outputs[pair[1]]
     return (state_in.scale, state_in.zero_point, state_in.dtype) == (
         state_out.scale,
         state_out.zero_point,
@@ -101,7 +101,7 @@ def _check_request(precision: Precision, io: IO, kind: str, steps: int, resets: 
     if (reason := _shape_rules(io, kind, steps, resets)) is not None:
         raise GoldenError(reason)
     if kind == "sequence":
-        for k, pair in enumerate(io.state_pairs):
+        for k, pair in enumerate(precision.pair_indices(io)):
             if not _tied(precision, pair):
                 raise GoldenError(
                     f"state pair {k} differs in dtype, scale or zero point, so its state cannot be carried exactly"
@@ -146,7 +146,7 @@ def generate(
     actual = (tuple(describe(d) for d in details_in), tuple(describe(d) for d in details_out))
     if actual != (precision.inputs, precision.outputs):
         raise GoldenError("the declared tensors do not match the model")
-    state = {pair.input: pair for pair in io.state_pairs}
+    state = dict(precision.pair_indices(io))
     rng = np.random.default_rng(seed)
     given = {} if data is None else dict(data)
     for index, values in given.items():
@@ -165,7 +165,7 @@ def generate(
         for index, (detail, tensor) in enumerate(zip(details_in, precision.inputs, strict=True)):
             if index in state:
                 carry = kind == "sequence" and previous is not None and t not in resets
-                value = previous[state[index].output].reshape(tensor.shape) if carry else reset_value(tensor)
+                value = previous[state[index]].reshape(tensor.shape) if carry else reset_value(tensor)
             elif index in given:
                 value = given[index] if kind == "single" else given[index][t]
             else:
@@ -214,18 +214,18 @@ def check_arrays(
     if (reason := _shape_rules(io, golden.kind, golden.steps, golden.resets)) is not None:
         problems.append(f"{where}: {reason}")
         return
-    for k, pair in enumerate(io.state_pairs):
-        state_in = precision.inputs[pair.input]
+    for k, pair in enumerate(precision.pair_indices(io)):
+        state_in = precision.inputs[pair[0]]
         if golden.kind == "sequence" and not _tied(precision, pair):
             problems.append(f"{where}: state pair {k} is not tied, so a sequence cannot carry it exactly")
             continue
-        fed, produced = arrays[f"input_{pair.input}"], arrays[f"output_{pair.output}"]
+        fed, produced = arrays[f"input_{pair[0]}"], arrays[f"output_{pair[1]}"]
         for t in range(golden.steps):
             starts = golden.kind == "batch" or t == 0 or t in golden.resets
             want = reset_value(state_in) if starts else produced[t - 1].reshape(state_in.shape)
             if not np.array_equal(fed[t], want):
-                what = "the reset value" if starts else f"output_{pair.output} of step {t - 1}"
-                problems.append(f"{where}: input_{pair.input} at step {t} is not {what}")
+                what = "the reset value" if starts else f"output_{pair[1]} of step {t - 1}"
+                problems.append(f"{where}: input_{pair[0]} at step {t} is not {what}")
                 break
 
 
@@ -295,9 +295,7 @@ def state_pairs_from_names(
     ins, outs = numbered(in_names, "state_in"), numbered(out_names, "state_out")
     if ins.keys() != outs.keys():
         raise GoldenError(f"unpaired state tensors: inputs {sorted(ins)}, outputs {sorted(outs)}")
-    return tuple(
-        StatePair(ins[k], outs[k], "zeros", inputs[ins[k]].scale == outputs[outs[k]].scale) for k in sorted(ins)
-    )
+    return tuple(StatePair(inputs[ins[k]].name, outputs[outs[k]].name) for k in sorted(ins))
 
 
 def pairs_by_index(
@@ -312,7 +310,7 @@ def pairs_by_index(
     for i, o in indices:
         if not (0 <= i < len(inputs) and 0 <= o < len(outputs)):
             raise GoldenError(f"pair {i}:{o} is out of range for {len(inputs)} inputs and {len(outputs)} outputs")
-        pairs.append(StatePair(i, o, "zeros", inputs[i].scale == outputs[o].scale))
+        pairs.append(StatePair(inputs[i].name, outputs[o].name))
     return tuple(pairs)
 
 
@@ -361,18 +359,19 @@ def check(
     return problems
 
 
-def manifest_block(path: Path, golden: Golden) -> dict[str, Any]:
-    """The manifest ``golden`` object for a written golden file at ``path``."""
+def record_block(path: Path, golden: Golden) -> dict[str, Any]:
+    """The record@1 ``golden`` object for a written golden file at ``path``."""
     from .hydrate import sha256_file
 
     return {
-        "file": {"uri": golden.file.uri, "sha256": sha256_file(path), "bytes": Path(path).stat().st_size},
+        "path": golden.file.path,
+        "sha256": sha256_file(path),
+        "bytes": Path(path).stat().st_size,
         "kind": golden.kind,
         "steps": golden.steps,
         "resets": list(golden.resets),
         "source": golden.source,
-        "reference_runtime": golden.reference_runtime,
-        "reference_runtime_version": golden.reference_runtime_version,
+        "runtime": f"{golden.reference_runtime}=={golden.reference_runtime_version}",
         "resolver": golden.resolver,
     }
 
@@ -385,8 +384,8 @@ __all__ = [
     "check_arrays",
     "generate",
     "load_golden",
-    "manifest_block",
     "pairs_by_index",
+    "record_block",
     "replay_arrays",
     "reset_value",
     "state_pairs_from_names",

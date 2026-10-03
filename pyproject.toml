@@ -21,10 +21,13 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/helia_model_zoo"]
+# The records and cards ship as package data; the artifacts stay in Git LFS or on Hugging Face.
+only-include = ["src/helia_model_zoo", "models"]
+exclude = ["*.tflite", "*.npz", "*.h5"]
+sources = { "src" = "", "models" = "helia_model_zoo/models" }
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "LICENSE", "NOTICE", "README.md", "pyproject.toml"]
+include = ["src", "models/*/record.json", "models/*/README.md", "LICENSE", "NOTICE", "README.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

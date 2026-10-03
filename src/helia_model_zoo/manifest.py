@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Ambiq AI
 # SPDX-License-Identifier: BSD-3-Clause
-"""Manifest v2 (``helia-model-zoo/manifest@2``): parsing and structural checks.
+"""Model records (``helia-model-zoo/record@1``): one ``models/<id>/record.json`` per model.
 
-Standard library only, so consumers without NumPy can read the manifest.
+Standard library only, so consumers without NumPy can read the records.
 """
 
 from __future__ import annotations
@@ -18,28 +18,23 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .golden import GoldenData
 
-SCHEMA = "helia-model-zoo/manifest@2"
+SCHEMA = "helia-model-zoo/record@1"
+MODELS = "models"
 
-PRECISIONS = ("fp32", "fp16", "int8", "int16x8")
-TIERS = ("native", "converted")
+PRECISIONS = ("fp32", "fp16", "a8w8", "a16w8", "a8w4")
 VISIBILITIES = ("public", "private")
 STREAMING = ("stateless", "explicit_state", "internal_state")
 GOLDEN_KINDS = ("single", "batch", "sequence")
 RESOLVERS = ("builtin", "builtin_ref")
 DTYPES = ("float32", "float16", "int8", "uint8", "int16", "int32", "int64", "bool")
-# lfs:// is a Git LFS file in this repository, repo:// a plain file in it; https:// is any HTTPS URL;
-# hf://[datasets/|spaces/]<org>/<repo>@<40-hex commit>/<path> is a Hugging Face file (HfFileSystem form).
-ARTIFACT_SCHEMES = ("lfs", "https", "hf")
-TEXT_SCHEMES = ("repo", "https", "hf")
 
 _ID = re.compile(r"[a-z0-9][a-z0-9.-]*")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _REVISION = re.compile(r"[0-9a-f]{40}")
-_URI = re.compile(r"(?P<scheme>[a-z]+)://(?P<path>.+)")
+_RUNTIME = re.compile(r"(?P<name>[A-Za-z0-9._-]+)==(?P<version>[A-Za-z0-9.+_-]+)")
 _HF = re.compile(
     r"(?:(?P<kind>datasets|spaces)/)?(?P<repo>[A-Za-z0-9][\w.-]*/[A-Za-z0-9][\w.-]*)@(?P<revision>[0-9a-f]{40})/(?P<path>.+)"
 )
-_HOST = re.compile(r"[A-Za-z0-9.-]+(:[0-9]+)?/.+")
 
 
 @dataclass(frozen=True)
@@ -59,19 +54,20 @@ def parse_hf(uri: str) -> HfLocation:
         ValueError: If ``uri`` is not of that form.
     """
     match = _HF.fullmatch(uri.removeprefix("hf://")) if uri.startswith("hf://") else None
-    if not match:
+    if not match or ".." in Path(match["path"]).parts:
         raise ValueError(f"expected hf://[datasets/|spaces/]<org>/<repo>@<40-hex commit>/<path>, got {uri!r}")
     kind = {"datasets": "dataset", "spaces": "space", None: "model"}[match["kind"]]
     return HfLocation(kind, match["repo"], match["revision"], match["path"])
 
 
 class ManifestError(ValueError):
-    """The manifest does not follow manifest@2."""
+    """A record does not follow record@1."""
 
 
 @dataclass(frozen=True)
 class FileRef:
-    """A file named by URI, pinned by sha256 when it is an artifact."""
+    """A file: ``lfs://`` or ``repo://`` (an artifact or a text file in this repository, by
+    repository path) or ``hf://`` (a Hugging Face file at a pinned revision)."""
 
     uri: str
     sha256: str | None = None
@@ -119,17 +115,13 @@ class Tensor:
 
 @dataclass(frozen=True)
 class StatePair:
-    """An explicit state: ``outputs[output]`` feeds ``inputs[input]`` on the next call.
+    """An explicit state, by tensor name: the ``output`` of one call feeds the ``input`` of the next.
 
-    ``reset`` is the value that starts a stream: ``"zeros"`` is real-valued zero, which a
-    quantized tensor stores as its zero point. ``scales_tied`` is true when the input and
-    output share a scale, so the output can be copied to the input unchanged.
+    A stream starts from real-valued zero, which a quantized tensor stores as its zero point.
     """
 
-    input: int
-    output: int
-    reset: str
-    scales_tied: bool
+    input: str
+    output: str
 
 
 @dataclass(frozen=True)
@@ -164,11 +156,18 @@ class Precision:
     outputs: tuple[Tensor, ...]
     golden: Golden | None
 
+    def pair_indices(self, io: IO) -> tuple[tuple[int, int], ...]:
+        """Each state pair as ``(input index, output index)`` in this precision's tensors.
 
-@dataclass(frozen=True)
-class License:
-    spdx: str | None
-    reference: FileRef
+        Raises:
+            KeyError: If a paired tensor name is not one of this precision's tensors.
+        """
+        inputs = {t.name: i for i, t in enumerate(self.inputs)}
+        outputs = {t.name: i for i, t in enumerate(self.outputs)}
+        try:
+            return tuple((inputs[p.input], outputs[p.output]) for p in io.state_pairs)
+        except KeyError as error:
+            raise KeyError(f"precision {self.name} has no tensor named {error.args[0]!r}") from None
 
 
 @dataclass(frozen=True)
@@ -180,15 +179,13 @@ class Upstream:
 
 
 @dataclass(frozen=True)
-class Entry:
+class Record:
     id: str
-    aliases: dict[str, str]
     title: str
     domain: str
     task: str
-    tier: str
     visibility: str
-    license: License
+    spdx: str | None
     card_file: FileRef
     upstream: Upstream | None
     io: IO
@@ -229,21 +226,16 @@ class Entry:
 
 @dataclass(frozen=True)
 class Manifest:
-    entries: tuple[Entry, ...]
+    """Every record that a models directory (and any overlay) holds."""
 
-    def get(self, model_id: str) -> Entry:
-        """Return the entry with this ID or alias."""
-        for entry in self.entries:
-            if model_id == entry.id or model_id in entry.aliases:
-                return entry
+    records: tuple[Record, ...]
+
+    def get(self, model_id: str) -> Record:
+        """The record with this ID."""
+        for record in self.records:
+            if record.id == model_id:
+                return record
         raise KeyError(f"unknown model ID: {model_id}")
-
-    def resolve(self, model_id: str) -> tuple[Entry, Precision | None]:
-        """Return the entry for an ID or alias, and the precision an alias names."""
-        entry = self.get(model_id)
-        if model_id in entry.aliases:
-            return entry, entry.precisions[entry.aliases[model_id]]
-        return entry, None
 
 
 def _object(value: Any, where: str, required: set[str], optional: frozenset[str] = frozenset()) -> dict[str, Any]:
@@ -286,39 +278,29 @@ def _sha256(value: Any, where: str) -> str:
     return value
 
 
-def _uri(value: Any, where: str, schemes: tuple[str, ...]) -> str:
-    match = _URI.fullmatch(_string(value, where))
-    if not match or match["scheme"] not in schemes:
-        raise ManifestError(f"{where}: expected a URI with scheme {list(schemes)}, got {value!r}")
-    path = match["path"]
-    if match["scheme"] == "hf":
+def _file(data: dict[str, Any], where: str, model_id: str, artifact: bool) -> FileRef:
+    """A file given as ``path`` (relative to the model directory) or ``uri`` (``hf://``), not both."""
+    if ("path" in data) == ("uri" in data):
+        raise ManifestError(f"{where}: give exactly one of path or uri")
+    if "uri" in data:
+        uri = _string(data["uri"], f"{where}.uri")
         try:
-            path = parse_hf(value).path
+            parse_hf(uri)
         except ValueError as error:
-            raise ManifestError(f"{where}: {error}") from None
-    elif match["scheme"] == "https":
-        if not _HOST.fullmatch(path) or ".." in path.split("/"):
-            raise ManifestError(f"{where}: expected https://<host>/<path> without '..', got {value!r}")
-        return value
-    if path.startswith("/") or ".." in Path(path).parts:
-        raise ManifestError(f"{where}: path must not be absolute or contain '..': {path!r}")
-    return value
+            raise ManifestError(f"{where}.uri: {error}") from None
+    else:
+        path = _string(data["path"], f"{where}.path")
+        if path.startswith("/") or "\\" in path or ".." in Path(path).parts or "://" in path:
+            raise ManifestError(f"{where}.path: expected a path inside the model directory, got {path!r}")
+        uri = f"{'lfs' if artifact else 'repo'}://{MODELS}/{model_id}/{path}"
+    if not artifact:
+        return FileRef(uri)
+    return FileRef(uri, _sha256(data["sha256"], f"{where}.sha256"), _int(data["bytes"], f"{where}.bytes", 1))
 
 
-def _file(value: Any, where: str, artifact: bool) -> FileRef:
-    if artifact:
-        data = _object(value, where, {"uri", "sha256", "bytes"})
-        return FileRef(
-            _uri(data["uri"], f"{where}.uri", ARTIFACT_SCHEMES),
-            _sha256(data["sha256"], f"{where}.sha256"),
-            _int(data["bytes"], f"{where}.bytes", 1),
-        )
-    data = _object(value, where, {"uri"}, frozenset({"sha256"}))
-    uri = _uri(data["uri"], f"{where}.uri", TEXT_SCHEMES)
-    sha256 = None if data.get("sha256") is None else _sha256(data["sha256"], f"{where}.sha256")
-    if uri.startswith("https://") and sha256 is None:
-        raise ManifestError(f"{where}: an https:// file needs a sha256, since its URL is not pinned to a revision")
-    return FileRef(uri, sha256)
+def _artifact(value: Any, where: str, model_id: str, extra: frozenset[str] = frozenset()) -> tuple[FileRef, dict]:
+    data = _object(value, where, {"sha256", "bytes"}, frozenset({"path", "uri"}) | extra)
+    return _file(data, where, model_id, artifact=True), data
 
 
 def _tensor(value: Any, where: str) -> Tensor:
@@ -342,9 +324,12 @@ def _tensor(value: Any, where: str) -> Tensor:
     )
 
 
-def _golden(value: Any, where: str) -> Golden:
-    keys = {"file", "kind", "steps", "resets", "source", "reference_runtime", "reference_runtime_version", "resolver"}
-    data = _object(value, where, keys)
+def _golden(value: Any, where: str, model_id: str) -> Golden:
+    keys = frozenset({"kind", "steps", "resets", "source", "runtime", "resolver"})
+    file, data = _artifact(value, where, model_id, keys)
+    missing = keys - data.keys()
+    if missing:
+        raise ManifestError(f"{where}: missing {sorted(missing)}")
     kind = _choice(data["kind"], f"{where}.kind", GOLDEN_KINDS)
     steps = _int(data["steps"], f"{where}.steps", 1)
     if kind == "single" and steps != 1:
@@ -363,32 +348,39 @@ def _golden(value: Any, where: str) -> Golden:
             _sha256(source["sha256"], f"{where}.source.sha256")
         else:
             raise ManifestError(f"{where}.source: expected null, {{seed}} or {{uri, sha256}}")
+    runtime = _RUNTIME.fullmatch(_string(data["runtime"], f"{where}.runtime"))
+    if runtime is None:
+        raise ManifestError(f"{where}.runtime: expected <distribution>==<version>, got {data['runtime']!r}")
     return Golden(
-        _file(data["file"], f"{where}.file", artifact=True),
+        file,
         kind,
         steps,
         tuple(resets),
         source,
-        _string(data["reference_runtime"], f"{where}.reference_runtime"),
-        _string(data["reference_runtime_version"], f"{where}.reference_runtime_version"),
+        runtime["name"],
+        runtime["version"],
         _choice(data["resolver"], f"{where}.resolver", RESOLVERS),
     )
 
 
-def _precision(name: str, value: Any, where: str) -> Precision:
+def _precision(name: str, value: Any, where: str, model_id: str) -> Precision:
     data = _object(value, where, {"model", "inputs", "outputs"}, frozenset({"golden"}))
     tensors = {}
     for role in ("inputs", "outputs"):
         if not isinstance(data[role], list) or not data[role]:
             raise ManifestError(f"{where}.{role}: expected a non-empty list")
         tensors[role] = tuple(_tensor(t, f"{where}.{role}[{i}]") for i, t in enumerate(data[role]))
+        names = [t.name for t in tensors[role]]
+        if len(set(names)) != len(names):
+            raise ManifestError(f"{where}.{role}: tensor names must be unique")
+    model, _ = _artifact(data["model"], f"{where}.model", model_id)
     golden = data.get("golden")
     return Precision(
         name,
-        _file(data["model"], f"{where}.model", artifact=True),
+        model,
         tensors["inputs"],
         tensors["outputs"],
-        None if golden is None else _golden(golden, f"{where}.golden"),
+        None if golden is None else _golden(golden, f"{where}.golden", model_id),
     )
 
 
@@ -400,15 +392,11 @@ def _io(value: Any, where: str) -> IO:
         raise ManifestError(f"{where}.state_pairs: expected a list")
     pairs = []
     for i, pair in enumerate(data["state_pairs"]):
-        item = _object(pair, f"{where}.state_pairs[{i}]", {"input", "output", "reset", "scales_tied"})
-        if type(item["scales_tied"]) is not bool:
-            raise ManifestError(f"{where}.state_pairs[{i}].scales_tied: expected a boolean")
+        item = _object(pair, f"{where}.state_pairs[{i}]", {"in", "out"})
         pairs.append(
             StatePair(
-                _int(item["input"], f"{where}.state_pairs[{i}].input"),
-                _int(item["output"], f"{where}.state_pairs[{i}].output"),
-                _choice(item["reset"], f"{where}.state_pairs[{i}].reset", ("zeros",)),
-                item["scales_tied"],
+                _string(item["in"], f"{where}.state_pairs[{i}].in"),
+                _string(item["out"], f"{where}.state_pairs[{i}].out"),
             )
         )
     if (streaming == "explicit_state") != bool(pairs):
@@ -420,115 +408,100 @@ def _io(value: Any, where: str) -> IO:
     return IO(streaming, tuple(pairs), **{k: _optional_int(data.get(k), f"{where}.{k}") for k in optional})
 
 
-def _entry(value: Any, where: str) -> Entry:
-    keys = {
-        "id",
-        "aliases",
-        "title",
-        "domain",
-        "task",
-        "tier",
-        "visibility",
-        "license",
-        "card",
-        "upstream",
-        "io",
-        "precisions",
-    }
-    data = _object(value, where, keys)
-    entry_id = _string(data["id"], f"{where}.id")
-    if not _ID.fullmatch(entry_id):
-        raise ManifestError(f"{where}.id: expected lowercase letters, digits, '.' and '-': {entry_id!r}")
-    where = f"entry {entry_id}"
+def parse_record(data: Any, model_id: str) -> Record:
+    """Check one decoded record@1 document for the model directory ``models/<model_id>/``.
+
+    Raises:
+        ManifestError: On the first structural problem found.
+    """
+    where = f"record {model_id}"
+    keys = {"schema", "id", "title", "task", "domain", "visibility", "license", "card", "io", "precisions"}
+    data = _object(data, where, keys, frozenset({"upstream"}))
+    if data["schema"] != SCHEMA:
+        raise ManifestError(f"{where}: unsupported schema {data['schema']!r}; expected {SCHEMA!r}")
+    if data["id"] != model_id or not _ID.fullmatch(model_id):
+        raise ManifestError(f"{where}: id must equal its directory name and use lowercase letters, digits, '.', '-'")
     if not isinstance(data["precisions"], dict) or not data["precisions"]:
         raise ManifestError(f"{where}.precisions: expected a non-empty object")
     precisions = {
-        _choice(k, f"{where}.precisions", PRECISIONS): _precision(k, v, f"{where}.precisions.{k}")
+        _choice(k, f"{where}.precisions", PRECISIONS): _precision(k, v, f"{where}.precisions.{k}", model_id)
         for k, v in data["precisions"].items()
     }
-    aliases = data["aliases"]
-    if not isinstance(aliases, dict) or not all(
-        isinstance(k, str) and _ID.fullmatch(k) and isinstance(v, str) for k, v in aliases.items()
-    ):
-        raise ManifestError(f"{where}.aliases: expected an object of ID -> precision")
-    for alias, precision in aliases.items():
-        if precision not in precisions:
-            raise ManifestError(f"{where}.aliases.{alias}: names a missing precision {precision!r}")
-    lic = _object(data["license"], f"{where}.license", {"spdx", "reference"})
+    lic = _object(data["license"], f"{where}.license", {"spdx"})
     spdx = None if lic["spdx"] is None else _string(lic["spdx"], f"{where}.license.spdx")
+    card = data["card"]
+    card_file = _file(
+        {"uri": card} if isinstance(card, str) and card.startswith("hf://") else {"path": card},
+        f"{where}.card",
+        model_id,
+        artifact=False,
+    )
     upstream = None
-    if data["upstream"] is not None:
-        up = _object(data["upstream"], f"{where}.upstream", {"repo", "revision", "path", "sha256"})
-        revision = up["revision"]
+    if data.get("upstream") is not None:
+        up = _object(data["upstream"], f"{where}.upstream", {"repo"}, frozenset({"revision", "path", "sha256"}))
+        revision = up.get("revision")
         if revision is not None and not (isinstance(revision, str) and _REVISION.fullmatch(revision)):
-            raise ManifestError(f"{where}.upstream.revision: expected a full 40-hex commit or null")
+            raise ManifestError(f"{where}.upstream.revision: expected a full 40-hex commit")
         upstream = Upstream(
             _string(up["repo"], f"{where}.upstream.repo"),
             revision,
-            None if up["path"] is None else _string(up["path"], f"{where}.upstream.path"),
-            None if up["sha256"] is None else _sha256(up["sha256"], f"{where}.upstream.sha256"),
+            None if up.get("path") is None else _string(up["path"], f"{where}.upstream.path"),
+            None if up.get("sha256") is None else _sha256(up["sha256"], f"{where}.upstream.sha256"),
         )
     io = _io(data["io"], f"{where}.io")
     for precision in precisions.values():
-        for pair in io.state_pairs:
-            if pair.input >= len(precision.inputs) or pair.output >= len(precision.outputs):
-                raise ManifestError(f"{where}.io.state_pairs: index out of range for {precision.name}")
-    return Entry(
-        entry_id,
-        dict(aliases),
+        try:
+            precision.pair_indices(io)
+        except KeyError as error:
+            raise ManifestError(f"{where}.io.state_pairs: {error.args[0]}") from None
+    return Record(
+        model_id,
         _string(data["title"], f"{where}.title"),
         _string(data["domain"], f"{where}.domain"),
         _string(data["task"], f"{where}.task"),
-        _choice(data["tier"], f"{where}.tier", TIERS),
         _choice(data["visibility"], f"{where}.visibility", VISIBILITIES),
-        License(spdx, _file(lic["reference"], f"{where}.license.reference", artifact=False)),
-        _file(data["card"], f"{where}.card", artifact=False),
+        spdx,
+        card_file,
         upstream,
         io,
         precisions,
     )
 
 
+def parse_records(records: dict[str, Any]) -> Manifest:
+    """Records from decoded documents keyed by model ID (directory name)."""
+    return Manifest(tuple(parse_record(data, model_id) for model_id, data in sorted(records.items())))
+
+
 def merge(*manifests: Manifest) -> Manifest:
-    """One manifest holding every entry; IDs and aliases must stay unique across all of them.
+    """One manifest holding every record; IDs must stay unique across all of them.
 
     Raises:
-        ManifestError: If an ID or alias is used twice.
+        ManifestError: If an ID is used twice.
     """
-    entries = tuple(entry for manifest in manifests for entry in manifest.entries)
-    _check_unique(entries)
-    return Manifest(entries)
+    records = tuple(record for manifest in manifests for record in manifest.records)
+    seen: set[str] = set()
+    for record in records:
+        if record.id in seen:
+            raise ManifestError(f"record {record.id}: ID is already used")
+        seen.add(record.id)
+    return Manifest(records)
 
 
-def _check_unique(entries: tuple[Entry, ...]) -> None:
-    names: dict[str, str] = {}
-    for entry in entries:
-        for name in (entry.id, *entry.aliases):
-            if name in names:
-                raise ManifestError(f"entry {entry.id}: ID or alias {name!r} is already used by {names[name]}")
-            names[name] = entry.id
+def packaged_models() -> Path:
+    """The models directory this package reads: its own data in a wheel, else the checkout's."""
+    shipped = resources.files(__package__).joinpath(MODELS)
+    if shipped.is_dir():
+        return Path(str(shipped))
+    return Path(__file__).resolve().parents[2] / MODELS
 
 
-def parse_manifest(data: Any) -> Manifest:
-    """Check a decoded manifest@2 document and return it as typed records.
-
-    Raises:
-        ManifestError: On the first structural problem found.
-    """
-    data = _object(data, "manifest", {"schema", "entries"})
-    if data["schema"] != SCHEMA:
-        raise ManifestError(f"manifest: unsupported schema {data['schema']!r}; expected {SCHEMA!r}")
-    if not isinstance(data["entries"], list) or not data["entries"]:
-        raise ManifestError("manifest: expected at least one entry")
-    entries = tuple(_entry(value, f"entries[{i}]") for i, value in enumerate(data["entries"]))
-    _check_unique(entries)
-    return Manifest(entries)
-
-
-def load_manifest(path: Path | None = None) -> Manifest:
-    """Load a manifest@2 file; by default the one shipped with this package."""
-    if path is None:
-        text = resources.files(__package__).joinpath("manifest.json").read_text(encoding="utf-8")
-    else:
-        text = Path(path).read_text(encoding="utf-8")
-    return parse_manifest(json.loads(text))
+def load_manifest(models: Path | None = None) -> Manifest:
+    """Load every ``<models>/<id>/record.json``; by default the records shipped with this package."""
+    models = packaged_models() if models is None else Path(models)
+    documents = {
+        path.parent.name: json.loads(path.read_text(encoding="utf-8")) for path in models.glob("*/record.json")
+    }
+    if not documents:
+        raise ManifestError(f"no records under {models}")
+    return parse_records(documents)

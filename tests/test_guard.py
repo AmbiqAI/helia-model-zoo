@@ -7,36 +7,35 @@ import pytest
 from conftest import PACKAGED, entry
 
 from helia_model_zoo.cli import main
-from helia_model_zoo.guard import MANIFEST_PATH, needles, scan
-from helia_model_zoo.manifest import parse_manifest
+from helia_model_zoo.guard import needles, scan
+from helia_model_zoo.manifest import parse_records
 
 SHA = "d" * 64
 GOLDEN_SHA = "e" * 64
 UPSTREAM_SHA = "c" * 64
 REPO = "Example/private-models"
-HF = f"hf://datasets/{REPO}@{'a' * 40}/m/int8/model.tflite"
+HF = f"hf://datasets/{REPO}@{'a' * 40}/m/a8w8/model.tflite"
 CARD = f"hf://datasets/Example/private-cards@{'a' * 40}/m/README.md"
-OVERLAY_AT = f"hf://datasets/Example/zoo-index@{'b' * 40}/manifest.json"
+OVERLAY_AT = f"hf://datasets/Example/zoo-index@{'b' * 40}"
 
 
 def overlay_item(data):
     item = json.loads(json.dumps(entry(data, "rnnoise")))
-    item.update(id="secret-enhancer", aliases={"secret-enhancer-v2": "int8"}, visibility="private", title="Hush Pro")
-    item["card"] = {"uri": CARD}
+    item.update(id="secret-enhancer", visibility="private", title="Hush Pro")
+    item["card"] = CARD
     item["upstream"] = {
         "repo": "https://example.com/vendor/hush",
-        "revision": None,
-        "path": None,
         "sha256": UPSTREAM_SHA,
     }
-    item["precisions"]["int8"]["model"].update(uri=HF, sha256=SHA)
-    item["precisions"]["int8"]["golden"]["file"].update(sha256=GOLDEN_SHA)
+    item["precisions"]["a8w8"]["model"].pop("path")
+    item["precisions"]["a8w8"]["model"].update(uri=HF, sha256=SHA)
+    item["precisions"]["a8w8"]["golden"].update(sha256=GOLDEN_SHA)
     return item
 
 
 @pytest.fixture
 def overlay(data):
-    return parse_manifest({"schema": "helia-model-zoo/manifest@2", "entries": [overlay_item(data)]})
+    return parse_records({"secret-enhancer": overlay_item(data)})
 
 
 def git(root, *args):
@@ -74,7 +73,6 @@ def test_needles(overlay):
         "example/zoo-index": "overlay repository",
         "zoo-index": "overlay repository",
         "secret-enhancer": "ID of secret-enhancer",
-        "secret-enhancer-v2": "alias of secret-enhancer",
         "hush pro": "title of secret-enhancer",
         "example/private-cards": "repository of secret-enhancer",
         "private-cards": "repository of secret-enhancer",
@@ -90,7 +88,7 @@ def test_needles(overlay):
 def test_short_titles_are_not_needles(data):
     item = overlay_item(data)
     item["title"] = "VAD"
-    assert "vad" not in needles(parse_manifest({"schema": "helia-model-zoo/manifest@2", "entries": [item]}))
+    assert "vad" not in needles(parse_records({"secret-enhancer": item}))
 
 
 def test_clean_checkout_passes(repo, overlay):
@@ -189,16 +187,20 @@ def test_extra_text_is_scanned(repo, overlay, tmp_path):
     assert wheres(repo, overlay, texts=(body,)) == [f"{body}:3"]
 
 
-def commit_manifest(repo, document):
-    commit(repo, MANIFEST_PATH, json.dumps(document), "feat: manifest")
+def commit_records(repo, documents):
+    for model_id, record in documents.items():
+        (repo / "models" / model_id).mkdir(parents=True, exist_ok=True)
+        (repo / "models" / model_id / "record.json").write_text(json.dumps(record))
+    git(repo, "add", "models")
+    git(repo, "commit", "-q", "-m", "feat: records")
 
 
 def test_names_public_at_base_are_skipped(repo, overlay, data):
     public = json.loads(json.dumps(PACKAGED))
     public_item = overlay_item(data)
-    public_item.update(id="hush-pro", aliases={}, visibility="public")
-    public["entries"].append(public_item)
-    commit_manifest(repo, public)
+    public_item.update(id="hush-pro", visibility="public")
+    public["hush-pro"] = public_item
+    commit_records(repo, public)
     git(repo, "branch", "-f", "base")
     commit(repo, "docs/page.md", f"Hush Pro, {UPSTREAM_SHA}, example/private-models\n")
     assert scan(repo, overlay, base="base") == []
@@ -206,23 +208,20 @@ def test_names_public_at_base_are_skipped(repo, overlay, data):
     assert scan(repo, overlay, base="base")
 
 
-def test_entry_copied_into_the_branch_manifest_is_found(repo, overlay, data):
-    commit_manifest(repo, PACKAGED)
+def test_record_copied_into_the_branch_is_found(repo, overlay, data):
+    commit_records(repo, PACKAGED)
     git(repo, "branch", "-f", "base")
-    leaked = json.loads(json.dumps(PACKAGED))
-    leaked["entries"].append(overlay_item(data) | {"visibility": "public"})
-    commit_manifest(repo, leaked)
+    commit_records(repo, {"secret-enhancer": overlay_item(data) | {"visibility": "public"}})
     found = wheres(repo, overlay)
-    assert any(w.startswith("commit ") and MANIFEST_PATH in w for w in found)
-    assert any(w.startswith(MANIFEST_PATH) for w in found)
+    assert any(w.startswith("commit ") and "models/secret-enhancer/record.json" in w for w in found)
+    assert any(w.startswith("models/secret-enhancer/record.json") for w in found)
 
 
 def write_overlay(tmp_path, data):
-    item = overlay_item(data)
-    item["aliases"] = {}
-    path = tmp_path / "overlay.json"
-    path.write_text(json.dumps({"schema": "helia-model-zoo/manifest@2", "entries": [item]}))
-    return path
+    path = tmp_path / "overlay/models/secret-enhancer/record.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(overlay_item(data)))
+    return tmp_path / "overlay"
 
 
 def test_cli_guard(repo, tmp_path, data, capsys):
@@ -233,8 +232,8 @@ def test_cli_guard(repo, tmp_path, data, capsys):
     err = capsys.readouterr().err
     assert "x.md:1: ID of secret-enhancer" in err and "do not publish" in err
     assert main([*args[:-1], "no-such-ref"]) == 2
-    assert main([*args[:2], str(tmp_path / "missing.json"), *args[3:]]) == 2
-    assert "no such file" in capsys.readouterr().err
+    assert main([*args[:2], str(tmp_path / "missing"), *args[3:]]) == 2
+    assert "no models/ directory" in capsys.readouterr().err
 
 
 def test_cli_guard_defaults_to_origin_main(repo, tmp_path, data):

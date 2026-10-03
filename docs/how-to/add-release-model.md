@@ -2,20 +2,25 @@
 
 The model zoo owns artifact identity and integrity. It does not decide which
 models helia-aot runs as release coverage. A model becomes eligible for release
-testing only after its model, golden fixture, model card, and manifest entry
+testing only after its model, golden fixture, model card, and record
 merge here; a separate helia-aot change then pins that merged commit and adds a
 release case.
 
 ## 1. Create a self-contained model directory
 
-Place the files under the appropriate domain and family:
+Choose a stable, descriptive ID (lowercase letters, digits, `.` and `-`). IDs
+are an API consumed by helia-aot and other tools and should not be renamed.
+Place the files under `models/<id>/`:
 
 ```text
-<domain>/<family?>/<model>/
+models/<id>/
+  record.json
   README.md
-  model.tflite
-  golden.npz
+  <precision>/model.tflite
+  <precision>/golden.npz
 ```
+
+Precisions are `fp32`, `fp16`, `a8w8`, `a16w8` and `a8w4`.
 
 The repository's `.gitattributes` tracks `.tflite` and `.npz` files with Git
 LFS. Confirm that Git sees new artifacts as LFS objects before committing:
@@ -25,12 +30,12 @@ git check-attr filter -- path/to/model.tflite path/to/golden.npz
 git lfs status
 ```
 
-Add the model to the appropriate domain README and to the root README inventory
-so people can discover it independently of the machine-readable manifest.
+`helia-zoo list` shows the new model once its record exists; there is no other
+inventory to edit.
 
 ## 2. Write the model card
 
-The model README is the provenance and license reference used by the manifest.
+The model README is the provenance and license reference used by the record.
 Document:
 
 - what the model does and its input/output contract;
@@ -62,66 +67,59 @@ python tools/generate_golden.py path/to/model.tflite path/to/golden.npz --seed 4
 
 The NPZ must contain consecutive `input_N` and `output_N` arrays whose shapes
 and dtypes match the TFLite signature. The generator uses LiteRT's reference
-kernels (`builtin_ref`); record that resolver in the manifest. For a streaming
+kernels (`builtin_ref`); note that resolver in the record. For a streaming
 model, prefer a `sequence` golden made from real input
 (`helia-zoo golden generate --kind sequence --data ...`; see the README). If the
 standard generator is unsuitable, document the deterministic input-generation
 method and runtime version in the pull request and model card.
 
-## 4. Add the manifest entry
+## 4. Add the record
 
-Choose a stable, descriptive ID. IDs are an API consumed by helia-aot and
-should not be renamed when files move. Add one entry to
-`corpus-manifest-v1.json`:
+helia-aot still reads `corpus-manifest-v1.json`, so a release model also needs a
+v1 entry there, pointing at the same files:
 
 ```json
 {
   "id": "example-int8",
-  "model": "vision/example/model.tflite",
+  "model": "models/example/a8w8/model.tflite",
   "model_sha256": "<hydrated model SHA-256>",
-  "golden": "vision/example/golden.npz",
+  "golden": "models/example/a8w8/golden.npz",
   "golden_sha256": "<hydrated golden SHA-256>",
   "reference_runtime": "ai-edge-litert",
   "reference_runtime_version": "2.1.2",
-  "provenance_reference": "vision/example/README.md",
-  "license_reference": "vision/example/README.md"
+  "provenance_reference": "models/example/README.md",
+  "license_reference": "models/example/README.md"
 }
 ```
 
-Add the same model to `src/helia_model_zoo/manifest.json` (manifest v2), with
-the v1 ID as an alias of its precision:
+Write `models/<id>/record.json` (`helia-model-zoo/record@1`), copying an
+existing record as a template. Take each tensor's name, shape, dtype, scale and
+zero point from the model, and record the LiteRT resolver its golden replays
+under (`builtin_ref` for new goldens). CI refuses a v1 entry that disagrees with
+the record holding its model.
 
-```json
-"aliases": {"example-int8": "int8"}
-```
+The record's fields:
 
-Copy an existing v2 entry as a template. Take each tensor's name, shape, dtype,
-scale and zero point from the model, record the LiteRT resolver its golden
-replays under (`builtin_ref` for new goldens), and list explicit state pairs
-under `io.state_pairs`. CI refuses a v2 entry that disagrees with its v1 alias.
-
-The v2 fields:
-
-- `visibility` must be `public`: this repository is public, and CI refuses any
-  other entry.
-- `tier` is `converted` for a model we run but do not train (every current
-  entry), or `native` for one whose architecture helia-edge can build and train.
-- Artifacts use `lfs://` paths with `sha256` and `bytes` of the hydrated file;
-  cards and license references use `repo://` paths. An `https://` or `hf://`
-  source in this manifest must download without credentials, which CI checks.
+- `id` equals the directory name; `visibility` must be `public`, because this
+  repository is public and CI refuses any other record.
+- `license.spdx` names the licence; the card gives the details.
+- `card` and each artifact `path` are relative to the model directory.
+  Artifacts carry the `sha256` and `bytes` of the hydrated file. A file hosted
+  on Hugging Face uses `uri` (`hf://<org>/<repo>@<40-hex commit>/<path>`)
+  instead of `path`, and must download without credentials, which CI checks.
 - `io.streaming` is `stateless`, `explicit_state` (state passed as inputs and
   outputs, listed in `state_pairs`) or `internal_state` (state kept inside the
   model).
-- A state pair names the input and output indices, its `reset` value (`zeros`
-  is real-valued zero, which a quantized tensor stores as its zero point), and
-  `scales_tied`: whether the two tensors share a scale, so the output can be fed
-  back unchanged.
+- A state pair names the input and output tensors (`{"in": ..., "out": ...}`).
+  A stream starts from real-valued zero, which a quantized tensor stores as its
+  zero point.
 - A golden's `kind` is `single`, `batch` or `sequence`. `batch` and
   `sequence` goldens add a leading axis of `steps`, and a sequence lists in
   `resets` the steps where its state returns to the reset value. CI checks the
   state carry of every sequence exactly and replays every step.
-- `--replay` runs only with the golden's `reference_runtime_version` of LiteRT
-  installed, as `tools/golden-requirements.txt` pins it.
+- A golden's `runtime` is the pinned LiteRT it replays with
+  (`ai-edge-litert==2.1.2`, as `tools/golden-requirements.txt` pins it);
+  `--replay` runs only with that version installed.
 
 Generate each digest from the hydrated file bytes, not from a Git LFS pointer:
 

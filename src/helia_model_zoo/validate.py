@@ -13,7 +13,7 @@ import numpy as np
 
 from . import golden, runtime
 from .hydrate import LFS_POINTER_PREFIX, FetchError, fetch_file, sha256_file
-from .manifest import Entry, FileRef, Manifest, Precision, load_manifest
+from .manifest import FileRef, Manifest, Precision, Record, load_manifest
 
 __all__ = ["ValidationError", "sha256_file", "validate"]
 
@@ -37,7 +37,7 @@ def _check_file(
         try:
             return fetch_file(ref, cache=cache, anonymous=anonymous)
         except FetchError as error:
-            note = " (fetched without credentials, as a public entry must be)" if anonymous else ""
+            note = " (fetched without credentials, as a public record must be)" if anonymous else ""
             problems.append(f"{where}: {error}{note}")
             return None
     try:
@@ -72,29 +72,25 @@ def _check_signature(precision: Precision, model: Path, where: str, problems: li
     ):
         actual = tuple(runtime.describe(d) for d in details)
         if len(actual) != len(declared):
-            problems.append(f"{where}.{role}: the model has {len(actual)}, the manifest declares {len(declared)}")
+            problems.append(f"{where}.{role}: the model has {len(actual)}, the record declares {len(declared)}")
             continue
         for index, (have, want) in enumerate(zip(actual, declared, strict=True)):
             if have != want:
-                problems.append(f"{where}.{role}[{index}]: manifest {want} does not match the model {have}")
+                problems.append(f"{where}.{role}[{index}]: record {want} does not match the model {have}")
 
 
-def _check_state_pairs(entry: Entry, precision: Precision, where: str, problems: list[str]) -> None:
-    for k, pair in enumerate(entry.io.state_pairs):
-        state_in, state_out = precision.inputs[pair.input], precision.outputs[pair.output]
+def _check_state_pairs(record: Record, precision: Precision, where: str, problems: list[str]) -> None:
+    for k, (i, o) in enumerate(precision.pair_indices(record.io)):
+        state_in, state_out = precision.inputs[i], precision.outputs[o]
         label = f"{where}: state pair {k} ({state_in.name} <- {state_out.name})"
         if math.prod(state_in.shape) != math.prod(state_out.shape):
             problems.append(f"{label}: element counts differ")
         if state_in.dtype != state_out.dtype or state_in.zero_point != state_out.zero_point:
             problems.append(f"{label}: dtype or zero point differs")
-        if pair.scales_tied != (state_in.scale == state_out.scale):
-            problems.append(
-                f"{label}: scales_tied is {pair.scales_tied}, but the scales are {state_in.scale} and {state_out.scale}"
-            )
 
 
 def _check_golden(
-    entry: Entry,
+    record: Record,
     precision: Precision,
     golden_path: Path,
     model: Path | None,
@@ -105,29 +101,29 @@ def _check_golden(
     with np.load(golden_path, allow_pickle=False) as loaded:
         arrays = {key: loaded[key] for key in loaded.files}
     found = len(problems)
-    golden.check_arrays(arrays, precision, precision.golden, entry.io, f"{where}.golden", problems)
+    golden.check_arrays(arrays, precision, precision.golden, record.io, f"{where}.golden", problems)
     if replay and model is not None and len(problems) == found:
-        golden.replay_arrays(model, arrays, precision.golden, entry.io, f"{where}.golden", problems)
+        golden.replay_arrays(model, arrays, precision.golden, record.io, f"{where}.golden", problems)
 
 
 def _check_v1(manifest: Manifest, v1_path: Path, problems: list[str]) -> None:
-    """Every v1 entry must equal the v2 precision its ID aliases."""
+    """Every v1 entry must name the same files, hashes and runtime as the record that holds its model."""
     v1 = json.loads(Path(v1_path).read_text(encoding="utf-8"))
+    by_model = {
+        precision.model.path: (record, precision)
+        for record in manifest.records
+        for precision in record.precisions.values()
+    }
     for item in v1.get("entries", []):
         where = f"v1 {item.get('id')}"
-        try:
-            entry, precision = manifest.resolve(item["id"])
-        except KeyError:
-            problems.append(f"{where}: no v2 entry has this alias")
+        if item.get("model") not in by_model:
+            problems.append(f"{where}: no record lists the model {item.get('model')!r}")
             continue
-        if precision is None:
-            problems.append(f"{where}: is a v2 ID, not an alias naming a precision")
-            continue
+        record, precision = by_model[item["model"]]
         golden = precision.golden
         pairs = [
-            ("model", f"lfs://{item['model']}", precision.model.uri),
             ("model_sha256", item["model_sha256"], precision.model.sha256),
-            ("golden", f"lfs://{item['golden']}", golden and golden.file.uri),
+            ("golden", item["golden"], golden and golden.file.path),
             ("golden_sha256", item["golden_sha256"], golden and golden.file.sha256),
             ("reference_runtime", item["reference_runtime"], golden and golden.reference_runtime),
             (
@@ -135,12 +131,12 @@ def _check_v1(manifest: Manifest, v1_path: Path, problems: list[str]) -> None:
                 item["reference_runtime_version"],
                 golden and golden.reference_runtime_version,
             ),
-            ("provenance_reference", f"repo://{item['provenance_reference']}", entry.card_file.uri),
-            ("license_reference", f"repo://{item['license_reference']}", entry.license.reference.uri),
+            ("provenance_reference", item["provenance_reference"], record.card_file.path),
+            ("license_reference", item["license_reference"], record.card_file.path),
         ]
         for key, old, new in pairs:
             if old != new:
-                problems.append(f"{where}: {key} is {old!r} in v1 but {new!r} in v2")
+                problems.append(f"{where}: {key} is {old!r} in v1 but {new!r} in record {record.id}")
 
 
 def validate(
@@ -153,17 +149,17 @@ def validate(
     public: bool = True,
     cache: Path | None = None,
 ) -> None:
-    """Validate every entry of a manifest against a hydrated checkout.
+    """Validate every record against a hydrated checkout.
 
     Args:
         root: The repository checkout that ``lfs://`` and ``repo://`` paths resolve against.
-        manifest: The manifest to check; by default the one shipped with this package.
+        manifest: The records to check; by default the ones shipped with this package.
         signatures: Compare declared tensors and goldens with each model (needs the ``litert`` extra).
         replay: Also run every golden call (each batch row and sequence step) and require its outputs
             exactly, under the golden's recorded resolver and LiteRT version (a different installed
             version is reported, not compared).
-        v1: A frozen v1 manifest whose entries must equal their v2 aliases.
-        public: Refuse any entry that is not public (the rule for this public repository), and fetch
+        v1: A v1 corpus manifest whose entries must agree with the records holding their models.
+        public: Refuse any record that is not public (the rule for this public repository), and fetch
             files from outside this repository without credentials, into a fresh cache unless ``cache``
             is given.
         cache: Where to fetch files from outside this repository (default: a fresh directory when
@@ -182,7 +178,7 @@ def validate(
     if fresh is not None:
         cache = Path(fresh.name)
     try:
-        _check_entries(root, manifest, signatures, replay, public, cache, problems)
+        _check_records(root, manifest, signatures, replay, public, cache, problems)
     finally:
         if fresh is not None:
             fresh.cleanup()
@@ -192,7 +188,7 @@ def validate(
         raise ValidationError(problems)
 
 
-def _check_entries(
+def _check_records(
     root: Path,
     manifest: Manifest,
     signatures: bool,
@@ -201,16 +197,15 @@ def _check_entries(
     cache: Path | None,
     problems: list[str],
 ) -> None:
-    for entry in manifest.entries:
-        where = f"entry {entry.id}"
-        if public and entry.visibility != "public":
-            problems.append(f"{where}: visibility is {entry.visibility!r}; this manifest holds public entries only")
+    for record in manifest.records:
+        where = f"record {record.id}"
+        if public and record.visibility != "public":
+            problems.append(f"{where}: visibility is {record.visibility!r}; this repository holds public records only")
             continue
-        _check_file(root, entry.card_file, f"{where}.card", problems, cache, public)
-        _check_file(root, entry.license.reference, f"{where}.license.reference", problems, cache, public)
-        for precision in entry.precisions.values():
+        _check_file(root, record.card_file, f"{where}.card", problems, cache, public)
+        for precision in record.precisions.values():
             pwhere = f"{where}.precisions.{precision.name}"
-            _check_state_pairs(entry, precision, pwhere, problems)
+            _check_state_pairs(record, precision, pwhere, problems)
             model = _check_file(root, precision.model, f"{pwhere}.model", problems, cache, public)
             if model is not None and signatures:
                 before = len(problems)
@@ -221,4 +216,4 @@ def _check_entries(
                 continue
             golden_file = _check_file(root, precision.golden.file, f"{pwhere}.golden", problems, cache, public)
             if golden_file is not None:
-                _check_golden(entry, precision, golden_file, model if signatures else None, replay, pwhere, problems)
+                _check_golden(record, precision, golden_file, model if signatures else None, replay, pwhere, problems)
