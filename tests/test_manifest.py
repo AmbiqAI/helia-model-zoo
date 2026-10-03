@@ -53,9 +53,10 @@ def test_a_checkout_reads_its_own_models_directory():
 
 def test_a_malformed_record_names_its_file(tmp_path):
     (tmp_path / "models/broken").mkdir(parents=True)
-    (tmp_path / "models/broken/record.json").write_text("{")
-    with pytest.raises(ManifestError, match="broken/record.json"):
-        load_manifest(tmp_path / "models")
+    for text in ("{", "[" * 100_000):
+        (tmp_path / "models/broken/record.json").write_text(text)
+        with pytest.raises(ManifestError, match="broken/record.json"):
+            load_manifest(tmp_path / "models")
 
 
 def test_an_installed_package_reads_its_shipped_records(monkeypatch, tmp_path):

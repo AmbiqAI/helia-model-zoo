@@ -32,7 +32,7 @@ _ID = re.compile(r"[a-z0-9][a-z0-9.-]*")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _REVISION = re.compile(r"[0-9a-f]{40}")
 _RUNTIME = re.compile(r"(?P<name>[A-Za-z0-9._-]+)==(?P<version>[A-Za-z0-9.+_-]+)")
-# A relative path: no empty, "." or ".."-led parts, backslashes or control characters.
+# A relative path: no empty or "."-led parts, backslashes, or characters below 0x20.
 _PATH = re.compile(r"[^/\\\x00-\x1f.][^/\\\x00-\x1f]*(?:/[^/\\\x00-\x1f.][^/\\\x00-\x1f]*)*")
 _HF = re.compile(
     r"(?:(?P<kind>datasets|spaces)/)?(?P<repo>[A-Za-z0-9][\w.-]*/[A-Za-z0-9][\w.-]*)@(?P<revision>[0-9a-f]{40})/(?P<path>.+)"
@@ -515,7 +515,7 @@ def read_record(content: bytes, where: object) -> Any:
     """
     try:
         return json.loads(content.decode("utf-8"))
-    except ValueError as error:
+    except (ValueError, RecursionError) as error:
         raise ManifestError(f"{where}: {error}") from None
 
 

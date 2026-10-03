@@ -120,7 +120,8 @@ def _check_v1(manifest: Manifest, v1_path: Path, problems: list[str]) -> None:
             problems.append(f"{where}: no record lists the model {item.get('model')!r}")
             continue
         record, precision = by_model[item["model"]]
-        if str(item.get("id")).rsplit("-", 1)[0] != record.id:
+        stem, _, suffix = str(item.get("id")).rpartition("-")
+        if stem != record.id or not suffix:
             problems.append(f"{where}: the ID does not name record {record.id}, which lists its model")
         golden = precision.golden
         pairs = [

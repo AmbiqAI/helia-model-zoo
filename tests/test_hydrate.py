@@ -259,6 +259,9 @@ def test_overlay_location_forms(monkeypatch, tmp_path, data):
             zoo.load_overlay(location)
     with pytest.raises(ManifestError, match="expected a local directory or an hf:// dataset root"):
         zoo.load_overlay("https://example.com/overlay")
+    server.files = ["models/.cache/record.json"]
+    with pytest.raises(ManifestError, match="overlay: expected hf://"):
+        zoo.load_overlay("hf://datasets/Example/index@" + "c" * 40)
     server.files = ["README.md"]
     with pytest.raises(ManifestError, match="no models/<id>/record.json"):
         zoo.load_overlay("hf://datasets/Example/index@" + "c" * 40)

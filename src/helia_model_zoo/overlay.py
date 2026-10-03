@@ -66,7 +66,7 @@ def _hf_records(location: str, options: dict) -> Manifest:
         if len(parts) == 3 and parts[0] == MODELS and parts[2] == "record.json":
             try:
                 path = fetch_file(FileRef(f"hf://datasets/{where.repo_id}@{where.revision}/{name}"), **options)
-            except FetchError as error:
+            except (FetchError, ValueError) as error:
                 raise ManifestError(f"overlay: {error}") from None
             documents[parts[1]] = read_record(Path(path).read_bytes(), name)
     if not documents:
