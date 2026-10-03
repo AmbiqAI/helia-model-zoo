@@ -325,7 +325,7 @@ def _tensor(value: Any, where: str) -> Tensor:
     if scale is not None and (
         type(scale) is not float or not math.isfinite(scale) or scale <= 0 or type(zero_point) is not int
     ):
-        raise ManifestError(f"{where}: expected a positive scale and an integer zero_point")
+        raise ManifestError(f"{where}: expected a positive float scale and an integer zero_point")
     return Tensor(
         _string(data["name"], f"{where}.name"),
         tuple(shape),

@@ -93,8 +93,10 @@ v1 entry there, pointing at the same files:
 ```
 
 Write `models/<id>/record.json` (`helia-model-zoo/record@1`), copying an
-existing record as a template. Take each tensor's name, shape, dtype, scale and
-zero point from the model, and record the LiteRT resolver its golden replays
+existing record as a template. Each file is a `path` inside the model directory
+(relative, with no empty part and no part that starts with `.`) or a pinned
+`hf://` URI. Take each tensor's name, shape, dtype, float scale and integer zero
+point from the model, and record the LiteRT resolver its golden replays
 under (`builtin_ref` for new goldens). CI refuses a v1 entry that disagrees with
 the record holding its model, or whose ID is not that record's ID with a suffix
 such as `-int8`.
