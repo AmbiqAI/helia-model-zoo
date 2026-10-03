@@ -20,13 +20,13 @@ or split spellings are not detected.
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from .manifest import MODELS, FileRef, Manifest, ManifestError, Record, parse_hf, parse_records
+from .manifest import MODELS, Manifest, ManifestError, Record, parse_hf, parse_records, read_record
+from .overlay import hf_root
 
 _MIN_TITLE = 6
 
@@ -40,20 +40,11 @@ class Hit:
     needle: str
 
 
-def _files(record: Record) -> list[FileRef]:
-    files = [record.card_file]
-    for precision in record.precisions.values():
-        files.append(precision.model)
-        if precision.golden is not None:
-            files.append(precision.golden.file)
-    return files
-
-
 def _names(record: Record) -> dict[str, str]:
     found: dict[str, str] = {record.id.lower(): f"ID of {record.id}"}
     if len(record.title) >= _MIN_TITLE:
         found[record.title.lower()] = f"title of {record.id}"
-    for ref in _files(record):
+    for ref in record.files():
         if ref.scheme == "hf":
             repo = parse_hf(ref.uri).repo_id.lower()
             found[repo] = f"repository of {record.id}"
@@ -75,7 +66,7 @@ def needles(overlay: Manifest, location: str | None = None, public: Manifest | N
     """
     found: dict[str, str] = {}
     if location and location.startswith("hf://"):
-        repo = parse_hf(location.rstrip("/") + "/.").repo_id.lower()
+        repo = hf_root(location).repo_id.lower()
         found[repo] = found[repo.split("/", 1)[1]] = "overlay repository"
     for record in overlay.records:
         found |= _names(record)
@@ -104,7 +95,7 @@ def public_manifest_at(root: Path, base: str | None) -> Manifest | None:
     for name in listing.splitlines():
         parts = name.split("/")
         if len(parts) == 3 and parts[2] == "record.json":
-            documents[parts[1]] = json.loads(_git(root, "show", f"{base}:{name}"))
+            documents[parts[1]] = read_record(_git(root, "show", f"{base}:{name}", binary=True), f"{base}:{name}")
     if not documents:
         return None
     try:
@@ -166,7 +157,7 @@ def scan(
 
     Raises:
         subprocess.CalledProcessError: If git fails, for example on an unknown ``base``.
-        ManifestError: If the manifest at ``base`` does not parse.
+        ManifestError: If a record at ``base`` does not parse.
     """
     root = Path(root)
     scanner = _Scanner(needles(overlay, location, public_manifest_at(root, base)))

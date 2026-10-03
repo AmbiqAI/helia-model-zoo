@@ -51,6 +51,13 @@ def test_a_checkout_reads_its_own_models_directory():
     assert {r.id for r in load_manifest(REPO / "models").records} == set(PACKAGED)
 
 
+def test_a_malformed_record_names_its_file(tmp_path):
+    (tmp_path / "models/broken").mkdir(parents=True)
+    (tmp_path / "models/broken/record.json").write_text("{")
+    with pytest.raises(ManifestError, match="broken/record.json"):
+        load_manifest(tmp_path / "models")
+
+
 def test_an_installed_package_reads_its_shipped_records(monkeypatch, tmp_path):
     (tmp_path / "models").mkdir()
     monkeypatch.setattr(resources, "files", lambda package: tmp_path)
@@ -79,6 +86,22 @@ CASES = {
         "40-hex",
     ),
     "absolute path": (lambda e: e.update(card="/etc/passwd"), "inside the model directory"),
+    "dot-led path": (lambda e: PRECISION(e)["model"].update(path="./a8w8/model.tflite"), "inside the model directory"),
+    "empty path part": (
+        lambda e: PRECISION(e)["model"].update(path="a8w8//model.tflite"),
+        "inside the model directory",
+    ),
+    "NUL in a path": (
+        lambda e: PRECISION(e)["model"].update(path="a8w8/model\x00.tflite"),
+        "inside the model directory",
+    ),
+    "hf path with a leading slash": (
+        lambda e: (
+            PRECISION(e)["model"].pop("path"),
+            PRECISION(e)["model"].update(uri=HF.replace("/m.tflite", "//m.tflite")),
+        ),
+        "expected hf://",
+    ),
     "parent path": (lambda e: e.update(card="../wav2letter/README.md"), "inside the model directory"),
     "scheme in a path": (lambda e: PRECISION(e)["model"].update(path="lfs://x.tflite"), "inside the model directory"),
     "old precision name": (lambda e: e["precisions"].update(int8=e["precisions"].pop("a8w8")), "expected one of"),
@@ -100,10 +123,15 @@ CASES = {
         lambda e: PRECISION(e)["inputs"].append(dict(PRECISION(e)["inputs"][0])),
         "names must be unique",
     ),
+    "duplicate output name": (
+        lambda e: PRECISION(e)["outputs"].append(dict(PRECISION(e)["outputs"][0])),
+        "names must be unique",
+    ),
     "scale without zero point": (lambda e: PRECISION(e)["inputs"][0].update(zero_point=None), "both be set"),
     "NaN scale": (lambda e: PRECISION(e)["inputs"][0].update(scale=float("nan")), "positive"),
     "infinite scale": (lambda e: PRECISION(e)["inputs"][0].update(scale=float("inf")), "positive"),
     "boolean scale": (lambda e: PRECISION(e)["inputs"][0].update(scale=True), "positive"),
+    "huge integer scale": (lambda e: PRECISION(e)["inputs"][0].update(scale=10**400), "positive"),
     "unknown dtype": (lambda e: PRECISION(e)["inputs"][0].update(dtype="int4"), "expected one of"),
     "short upstream revision": (lambda e: e["upstream"].update(revision="fec0bb5b"), "40-hex"),
     "bad visibility": (lambda e: e.update(visibility="internal"), "expected one of"),

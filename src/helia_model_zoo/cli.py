@@ -260,7 +260,9 @@ def main(argv: list[str] | None = None) -> int:
     get.add_argument("--root", help="hydrated checkout to read repository files from")
     get.set_defaults(run=_fetch)
     guard = commands.add_parser("guard", help="refuse if a checkout contains any name from a private overlay")
-    guard.add_argument("--overlay", required=True, help="overlay manifest: a local path or an hf:// URI")
+    guard.add_argument(
+        "--overlay", required=True, help="overlay: a local directory or an hf://datasets/<org>/<repo>@<commit> root"
+    )
     guard.add_argument("--root", default=".", help="checkout to scan (default: .)")
     guard.add_argument("--base", default="origin/main", help="scan commit messages in BASE..HEAD")
     guard.add_argument("--text", action="append", default=[], type=Path, help="extra text file, e.g. a PR body")
@@ -279,7 +281,7 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_argument("--resolver", default="builtin_ref", choices=("builtin_ref", "builtin"))
     make.add_argument("out", type=Path, help="NPZ to write")
     make.add_argument("--record", help="take tensors and state pairs from this model's record (ID)")
-    make.add_argument("--precision", help="the entry's precision")
+    make.add_argument("--precision", help="the record's precision")
     make.add_argument("--seed", type=int, default=42, help="seed for inputs not given by --data")
     make.add_argument(
         "--data",
@@ -298,7 +300,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.run(args)
     except ManifestError as error:
-        print(f"invalid manifest: {error}", file=sys.stderr)
+        print(f"invalid record: {error}", file=sys.stderr)
         return 1
 
 

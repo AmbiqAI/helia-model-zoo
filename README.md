@@ -15,7 +15,9 @@ models/<id>/
 
 The directory name is the model ID. Precisions are `fp32`, `fp16`, `a8w8`,
 `a16w8` and `a8w4`. There is no other inventory: `helia-zoo list` prints the
-models from the records.
+models from the records. No record lists GTCRN (`audio/gtcrn/`) or the float
+MLPerf Tiny models that remain beside it under `audio/`, `vision/` and
+`anomaly-detection/`.
 
 To contribute a model/golden pair for helia-aot release testing, follow
 [Add a model to the release corpus](docs/how-to/add-release-model.md). Adding an
@@ -62,9 +64,10 @@ without a record.
 
 The records pin every model and golden by SHA-256. Each one lists its
 precisions, tensors, state pairs (by tensor name), golden metadata, licence and
-upstream source. The records and cards ship with the Python package.
+upstream source. The records ship with the Python package.
 `corpus-manifest-v1.json` keeps the v1 format that helia-aot reads; CI checks
-that each v1 entry agrees with the record holding its model.
+that each v1 entry agrees with the record holding its model, and that its ID is
+that record's ID with a suffix.
 
 CI hydrates Git LFS and checks artifact hashes, the declared tensors, NPZ keys,
 shapes and dtypes against each TFLite model. It also checks that each golden's
@@ -167,7 +170,8 @@ Private models never enter this repository. Their records live in an overlay
 with this repository's `models/<id>/record.json` layout that only its users can
 read. `HELIA_ZOO_OVERLAY` names it: a local directory, or a Hugging Face dataset
 root such as `hf://datasets/<org>/<repo>@<40-hex commit>`, read once per
-process. Its records join the packaged ones. Before pushing any change here, run
+process. Its records join the packaged ones, and give every file as a pinned
+`hf://` URI rather than a path. Before pushing any change here, run
 
 ```bash
 helia-zoo guard --overlay "$HELIA_ZOO_OVERLAY" --text pr-body.md

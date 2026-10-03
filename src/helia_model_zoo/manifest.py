@@ -32,6 +32,8 @@ _ID = re.compile(r"[a-z0-9][a-z0-9.-]*")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _REVISION = re.compile(r"[0-9a-f]{40}")
 _RUNTIME = re.compile(r"(?P<name>[A-Za-z0-9._-]+)==(?P<version>[A-Za-z0-9.+_-]+)")
+# A relative path: no empty, "." or ".."-led parts, backslashes or control characters.
+_PATH = re.compile(r"[^/\\\x00-\x1f.][^/\\\x00-\x1f]*(?:/[^/\\\x00-\x1f.][^/\\\x00-\x1f]*)*")
 _HF = re.compile(
     r"(?:(?P<kind>datasets|spaces)/)?(?P<repo>[A-Za-z0-9][\w.-]*/[A-Za-z0-9][\w.-]*)@(?P<revision>[0-9a-f]{40})/(?P<path>.+)"
 )
@@ -54,7 +56,7 @@ def parse_hf(uri: str) -> HfLocation:
         ValueError: If ``uri`` is not of that form.
     """
     match = _HF.fullmatch(uri.removeprefix("hf://")) if uri.startswith("hf://") else None
-    if not match or ".." in Path(match["path"]).parts:
+    if not match or not _PATH.fullmatch(match["path"]):
         raise ValueError(f"expected hf://[datasets/|spaces/]<org>/<repo>@<40-hex commit>/<path>, got {uri!r}")
     kind = {"datasets": "dataset", "spaces": "space", None: "model"}[match["kind"]]
     return HfLocation(kind, match["repo"], match["revision"], match["path"])
@@ -217,6 +219,15 @@ class Record:
             raise KeyError(f"{self.id} {chosen.name} has no golden")
         return load_golden(fetch_file(chosen.golden.file, **options), chosen)
 
+    def files(self) -> tuple[FileRef, ...]:
+        """The card, then each precision's model and golden."""
+        files = [self.card_file]
+        for precision in self.precisions.values():
+            files.append(precision.model)
+            if precision.golden is not None:
+                files.append(precision.golden.file)
+        return tuple(files)
+
     def card(self, **options: Any) -> Path:
         """The verified local path of the model card."""
         from .hydrate import fetch_file
@@ -290,7 +301,7 @@ def _file(data: dict[str, Any], where: str, model_id: str, artifact: bool) -> Fi
             raise ManifestError(f"{where}.uri: {error}") from None
     else:
         path = _string(data["path"], f"{where}.path")
-        if path.startswith("/") or "\\" in path or ".." in Path(path).parts or "://" in path:
+        if not _PATH.fullmatch(path):
             raise ManifestError(f"{where}.path: expected a path inside the model directory, got {path!r}")
         uri = f"{'lfs' if artifact else 'repo'}://{MODELS}/{model_id}/{path}"
     if not artifact:
@@ -312,7 +323,7 @@ def _tensor(value: Any, where: str) -> Tensor:
     if (scale is None) != (zero_point is None):
         raise ManifestError(f"{where}: scale and zero_point must both be set or both be null")
     if scale is not None and (
-        type(scale) not in (int, float) or not math.isfinite(scale) or scale <= 0 or type(zero_point) is not int
+        type(scale) is not float or not math.isfinite(scale) or scale <= 0 or type(zero_point) is not int
     ):
         raise ManifestError(f"{where}: expected a positive scale and an integer zero_point")
     return Tensor(
@@ -496,12 +507,22 @@ def packaged_models() -> Path:
     return Path(__file__).resolve().parents[2] / MODELS
 
 
+def read_record(content: bytes, where: object) -> Any:
+    """Decode one ``record.json``.
+
+    Raises:
+        ManifestError: If it is not UTF-8 JSON.
+    """
+    try:
+        return json.loads(content.decode("utf-8"))
+    except ValueError as error:
+        raise ManifestError(f"{where}: {error}") from None
+
+
 def load_manifest(models: Path | None = None) -> Manifest:
     """Load every ``<models>/<id>/record.json``; by default the records shipped with this package."""
     models = packaged_models() if models is None else Path(models)
-    documents = {
-        path.parent.name: json.loads(path.read_text(encoding="utf-8")) for path in models.glob("*/record.json")
-    }
+    documents = {path.parent.name: read_record(path.read_bytes(), path) for path in models.glob("*/record.json")}
     if not documents:
         raise ManifestError(f"no records under {models}")
     return parse_records(documents)

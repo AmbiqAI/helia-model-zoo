@@ -295,7 +295,7 @@ def state_pairs_from_names(
     ins, outs = numbered(in_names, "state_in"), numbered(out_names, "state_out")
     if ins.keys() != outs.keys():
         raise GoldenError(f"unpaired state tensors: inputs {sorted(ins)}, outputs {sorted(outs)}")
-    return tuple(StatePair(inputs[ins[k]].name, outputs[outs[k]].name) for k in sorted(ins))
+    return pairs_by_index(inputs, outputs, [(ins[k], outs[k]) for k in sorted(ins)])
 
 
 def pairs_by_index(
@@ -304,12 +304,15 @@ def pairs_by_index(
     """State pairs from ``(input index, output index)`` tuples.
 
     Raises:
-        GoldenError: If an index is out of range.
+        GoldenError: If an index is out of range, or names a tensor whose name another tensor shares.
     """
     pairs = []
     for i, o in indices:
         if not (0 <= i < len(inputs) and 0 <= o < len(outputs)):
             raise GoldenError(f"pair {i}:{o} is out of range for {len(inputs)} inputs and {len(outputs)} outputs")
+        for tensors, index in ((inputs, i), (outputs, o)):
+            if sum(t.name == tensors[index].name for t in tensors) > 1:
+                raise GoldenError(f"pair {i}:{o}: tensor name {tensors[index].name!r} is not unique")
         pairs.append(StatePair(inputs[i].name, outputs[o].name))
     return tuple(pairs)
 
@@ -326,7 +329,7 @@ def check(
     replay: bool = True,
     reference_runtime_version: str | None = None,
 ) -> list[str]:
-    """Check one golden file against its model, without a manifest entry.
+    """Check one golden file against its model, without a record.
 
     ``state_pairs`` are ``(input index, output index)``; by default they come from
     ``state_in_k``/``state_out_k`` signature or tensor names. Replay uses ``resolver`` and requires

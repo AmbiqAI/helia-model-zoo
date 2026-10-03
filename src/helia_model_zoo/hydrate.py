@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ambiq AI
 # SPDX-License-Identifier: BSD-3-Clause
-"""Fetch manifest files into a sha256-keyed cache, verifying every byte.
+"""Fetch record files into a sha256-keyed cache, verifying every byte.
 
 Standard library only, except ``hf://`` sources, which need the ``hf`` extra (huggingface_hub).
 Credentials are never read, printed or stored here: Hugging Face access uses huggingface_hub's
@@ -30,7 +30,7 @@ _REVISION = re.compile(r"[0-9a-f]{40}")
 
 
 class FetchError(RuntimeError):
-    """A file could not be fetched, or its bytes did not match the manifest."""
+    """A file could not be fetched, or its bytes did not match its record."""
 
 
 @cache
@@ -44,7 +44,7 @@ def _install() -> dict:
 
 
 def installed_revision() -> str | None:
-    """The repository commit whose files this manifest describes.
+    """The repository commit whose files the packaged records describe.
 
     ``HELIA_ZOO_REVISION`` if set, else the commit this package was installed from by git SHA.
     """
@@ -170,7 +170,7 @@ def fetch_file(
     place, so the cache never holds an unverified file.
 
     Args:
-        ref: The manifest file to fetch.
+        ref: The record file to fetch.
         root: A checkout of this repository.
         revision: The repository commit to download repository files from.
         cache: The cache directory (default :func:`cache_dir`).
@@ -188,7 +188,7 @@ def fetch_file(
                 raise FetchError(str(error)) from None
             if local.is_file() and not _is_pointer(local):
                 if not _matches(local, ref):
-                    raise FetchError(f"{local} does not match the manifest's size and sha256 for {ref.uri}")
+                    raise FetchError(f"{local} does not match the record's size and sha256 for {ref.uri}")
                 return local
         revision = revision or installed_revision()
         if revision is None:

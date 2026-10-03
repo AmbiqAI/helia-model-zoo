@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ambiq AI
 # SPDX-License-Identifier: BSD-3-Clause
-"""Validate a manifest@2 against a hydrated checkout of this repository."""
+"""Validate the records against a hydrated checkout of this repository."""
 
 from __future__ import annotations
 
@@ -120,6 +120,8 @@ def _check_v1(manifest: Manifest, v1_path: Path, problems: list[str]) -> None:
             problems.append(f"{where}: no record lists the model {item.get('model')!r}")
             continue
         record, precision = by_model[item["model"]]
+        if str(item.get("id")).rsplit("-", 1)[0] != record.id:
+            problems.append(f"{where}: the ID does not name record {record.id}, which lists its model")
         golden = precision.golden
         pairs = [
             ("model_sha256", item["model_sha256"], precision.model.sha256),

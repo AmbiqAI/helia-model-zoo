@@ -165,6 +165,15 @@ def test_v1_and_records_must_agree_on_every_field(tmp_path, data, field):
     assert V1_FIELDS[field] in v1_problems[0]
 
 
+def test_v1_ids_must_name_the_record(tmp_path, data):
+    v1 = json.loads((REPO / "corpus-manifest-v1.json").read_text())
+    next(i for i in v1["entries"] if i["id"] == "rnnoise-int8")["id"] = "wav2letter-int8"
+    path = tmp_path / "v1.json"
+    path.write_text(json.dumps(v1))
+    problems = problems_of(tmp_path, only(data, "rnnoise"), signatures=False, v1=path)
+    assert "v1 wav2letter-int8: the ID does not name record rnnoise, which lists its model" in problems
+
+
 def test_v1_models_must_be_in_a_record(tmp_path, data):
     v1 = json.loads((REPO / "corpus-manifest-v1.json").read_text())
     v1["entries"].append(dict(v1["entries"][1], id="not-in-a-record", model="models/x/a8w8/model.tflite"))

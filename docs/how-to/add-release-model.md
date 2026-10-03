@@ -96,7 +96,8 @@ Write `models/<id>/record.json` (`helia-model-zoo/record@1`), copying an
 existing record as a template. Take each tensor's name, shape, dtype, scale and
 zero point from the model, and record the LiteRT resolver its golden replays
 under (`builtin_ref` for new goldens). CI refuses a v1 entry that disagrees with
-the record holding its model.
+the record holding its model, or whose ID is not that record's ID with a suffix
+such as `-int8`.
 
 The record's fields:
 
@@ -144,7 +145,8 @@ helia-zoo validate --replay
 Validation rejects unresolved LFS pointers, path escapes, missing artifacts,
 digest mismatches, duplicate IDs, missing or unexpected NPZ keys,
 signature-incompatible shapes or dtypes, declared tensors that differ from the
-model, goldens that do not replay exactly, and v1/v2 disagreements.
+model, goldens that do not replay exactly, and v1 entries that disagree with
+the records.
 
 If an existing golden changes, summarize representative and maximum numerical
 differences in the pull request and obtain approval from the model/corpus

@@ -15,6 +15,7 @@ GOLDEN_SHA = "e" * 64
 UPSTREAM_SHA = "c" * 64
 REPO = "Example/private-models"
 HF = f"hf://datasets/{REPO}@{'a' * 40}/m/a8w8/model.tflite"
+GOLDEN = f"hf://datasets/{REPO}@{'a' * 40}/m/a8w8/golden.npz"
 CARD = f"hf://datasets/Example/private-cards@{'a' * 40}/m/README.md"
 OVERLAY_AT = f"hf://datasets/Example/zoo-index@{'b' * 40}"
 
@@ -29,7 +30,8 @@ def overlay_item(data):
     }
     item["precisions"]["a8w8"]["model"].pop("path")
     item["precisions"]["a8w8"]["model"].update(uri=HF, sha256=SHA)
-    item["precisions"]["a8w8"]["golden"].update(sha256=GOLDEN_SHA)
+    item["precisions"]["a8w8"]["golden"].pop("path")
+    item["precisions"]["a8w8"]["golden"].update(uri=GOLDEN, sha256=GOLDEN_SHA)
     return item
 
 
@@ -206,6 +208,15 @@ def test_names_public_at_base_are_skipped(repo, overlay, data):
     assert scan(repo, overlay, base="base") == []
     commit(repo, "docs/other.md", "secret-enhancer\n")
     assert scan(repo, overlay, base="base")
+
+
+def test_a_name_added_to_a_public_record_is_found(repo, overlay, data):
+    commit_records(repo, PACKAGED)
+    git(repo, "branch", "-f", "base")
+    public = json.loads(json.dumps(entry(PACKAGED, "rnnoise")))
+    public["upstream"]["sha256"] = UPSTREAM_SHA
+    commit_records(repo, {"rnnoise": public})
+    assert "models/rnnoise/record.json" in " ".join(wheres(repo, overlay))
 
 
 def test_record_copied_into_the_branch_is_found(repo, overlay, data):

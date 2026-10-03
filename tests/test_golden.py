@@ -169,6 +169,18 @@ def test_state_pairs_from_names():
         state_pairs_from_names(inputs, outputs, (names[0], ["state_out_1", "y", "z"]))
 
 
+def test_a_pair_needs_uniquely_named_tensors():
+    tensor = lambda name: Tensor(name, (1, 4), "int8", 0.5, 0)  # noqa: E731
+    inputs, outputs = [tensor("x"), tensor("x")], [tensor("y")]
+    with pytest.raises(GoldenError, match="'x' is not unique"):
+        golden.pairs_by_index(inputs, outputs, [(1, 0)])
+    with pytest.raises(GoldenError, match="'y' is not unique"):
+        golden.pairs_by_index([tensor("a")], [tensor("y"), tensor("y")], [(0, 1)])
+    # Signature names can pair a tensor whose name another tensor shares.
+    with pytest.raises(GoldenError, match="'x' is not unique"):
+        state_pairs_from_names(inputs, outputs, (["data", "state_in_0"], ["state_out_0"]))
+
+
 def test_standalone_check(dfnet2, tmp_path):
     model, precision, io = dfnet2
     path = tmp_path / "g.npz"

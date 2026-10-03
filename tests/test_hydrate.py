@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import types
+from pathlib import Path
 
 import pytest
 from conftest import POINTER, entry
@@ -45,8 +46,8 @@ class Server:
         server = self
 
         class HfApi:
-            def list_repo_files(self, repo_id, *, repo_type, revision):
-                server.listed.append((repo_id, repo_type, revision))
+            def list_repo_files(self, repo_id, *, repo_type, revision, token):
+                server.listed.append((repo_id, repo_type, revision, token))
                 return server.files
 
         module.HfApi = HfApi
@@ -108,7 +109,7 @@ def test_changed_file_in_checkout_is_refused(monkeypatch, tmp_path):
     Server(monkeypatch)
     (tmp_path / "repo/audio/x").mkdir(parents=True)
     (tmp_path / "repo/audio/x/model.tflite").write_bytes(b"other bytes")
-    with pytest.raises(FetchError, match="does not match the manifest"):
+    with pytest.raises(FetchError, match="does not match the record"):
         fetch_file(artifact("lfs://audio/x/model.tflite"), root=tmp_path / "repo", revision=COMMIT)
 
 
@@ -201,12 +202,13 @@ def test_installed_revision_and_checkout(monkeypatch, tmp_path):
 
 
 def _overlay(tmp_path, data, model_id="private-vad"):
-    """An overlay directory holding one private record whose model lives on Hugging Face."""
+    """An overlay directory holding one private record whose files live on Hugging Face."""
     item = json.loads(json.dumps(entry(data, "rnnoise")))
-    item.update(id=model_id, visibility="private")
-    model = item["precisions"]["a8w8"]["model"]
-    model.pop("path")
-    model.update(uri=HF, sha256=SHA, bytes=len(BODY))
+    item.update(id=model_id, visibility="private", card=HF.replace("a16w8/model.tflite", "README.md"))
+    precision = item["precisions"]["a8w8"]
+    for key in ("model", "golden"):
+        precision[key]["uri"] = HF.replace("model.tflite", Path(precision[key].pop("path")).name)
+    precision["model"].update(sha256=SHA, bytes=len(BODY))
     record = tmp_path / "overlay/models" / model_id / "record.json"
     record.parent.mkdir(parents=True)
     record.write_text(json.dumps(item))
@@ -228,16 +230,33 @@ def test_overlay_may_not_reuse_a_packaged_id(monkeypatch, tmp_path, data):
         zoo.manifest()
 
 
+def test_overlay_records_give_files_as_hf_uris(tmp_path, data):
+    overlay = _overlay(tmp_path, data)
+    record = overlay / "models/private-vad/record.json"
+    item = json.loads(record.read_text())
+    item["card"] = "README.md"
+    record.write_text(json.dumps(item))
+    with pytest.raises(ManifestError, match="private-vad: give every file as an hf:// URI"):
+        zoo.load_overlay(overlay)
+
+
 def test_overlay_location_forms(monkeypatch, tmp_path, data):
     record = (_overlay(tmp_path, data) / "models/private-vad/record.json").read_bytes()
     server = Server(monkeypatch, record)
     server.files = ["README.md", "record.json", "models/private-vad/record.json", "models/private-vad/a8w8/record.json"]
     overlay = zoo.load_overlay("hf://datasets/Example/index@" + "c" * 40)
     assert [r.id for r in overlay.records] == ["private-vad"]
-    assert server.listed == [("Example/index", "dataset", "c" * 40)]
+    assert server.listed == [("Example/index", "dataset", "c" * 40, None)]
     assert server.hf == [("Example/index", "models/private-vad/record.json", "dataset", "c" * 40, None)]
-    with pytest.raises(ManifestError, match="40-hex"):
-        zoo.load_overlay("hf://datasets/Example/index@main")
+    zoo.load_overlay("hf://datasets/Example/index@" + "c" * 40, anonymous=True)
+    assert server.listed[-1] == ("Example/index", "dataset", "c" * 40, False)
+    for location in (
+        "hf://datasets/Example/index@main",
+        "hf://datasets/Example/index@" + "c" * 40 + "/sub",
+        "hf://Example/index@" + "c" * 40,
+    ):
+        with pytest.raises(ManifestError, match="as an overlay root"):
+            zoo.load_overlay(location)
     with pytest.raises(ManifestError, match="expected a local directory or an hf:// dataset root"):
         zoo.load_overlay("https://example.com/overlay")
     server.files = ["README.md"]
