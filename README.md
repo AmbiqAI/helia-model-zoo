@@ -142,8 +142,20 @@ record.io.state_pairs              # explicit state: which output feeds which in
 
 model = record.fetch("a8w8")       # a local path whose sha256 matches the record
 golden = record.golden("a8w8")     # golden.inputs / golden.outputs as NumPy arrays
-zoo.resolve("zoo://rnnoise/a8w8")  # the same model by URI
+
+art = zoo.resolve("zoo://rnnoise/a8w8@<40-hex commit>")  # the model as recorded at that commit
+art.record, art.precision          # the record and precision at that commit
+art.model, art.golden              # their verified local files
 ```
+
+A reference is `zoo://<id>[/<precision>][@<commit>]`; `zoo.parse_reference()`
+splits one. With a commit, the record is downloaded from this repository at that
+commit (`zoo.get(id, revision)`), and its files come from the same commit. This
+works for any commit from 83ed7226 on whose records use the installed version's
+schema (`record@1`). An ID is private only when `HELIA_ZOO_OVERLAY` holds it; it
+then resolves only at the revision the overlay is pinned to, and any other ID is
+looked up here. Without a commit, the installed record is used, so pin one
+wherever results must be reproducible.
 
 `helia-zoo list`, `show <id>`, `fetch <id> [--golden] [--card]` and `validate`
 expose the same on the command line. Installing from Git with git-lfs present
@@ -155,14 +167,17 @@ Files are fetched as follows:
 - Files in this repository are read from a hydrated checkout when there is one
   (`root=`, `HELIA_ZOO_ROOT`, or an editable install). Otherwise they are
   downloaded from GitHub at the commit the package was installed from
-  (`HELIA_ZOO_REVISION` overrides it).
+  (`HELIA_ZOO_REVISION` overrides it). A checkout cannot show its commit, so at
+  an explicit revision only a `root=` checkout is read, and only for files with
+  a sha256; a record or card is downloaded once at that revision, then cached.
 - `hf://` sources (`hf://[datasets/]<org>/<repo>@<40-hex commit>/<path>`) need
   the `hf` extra and use huggingface_hub's own login (`HF_TOKEN` or
   `hf auth login`).
 - Every model, golden or other file with a sha256 is checked for size and
   sha256 before it enters the cache (`HELIA_ZOO_CACHE`, default
-  `~/.cache/helia-model-zoo`), and checked again on every fetch. A card or
-  overlay record without a sha256 is pinned by its revision instead.
+  `~/.cache/helia-model-zoo`), and checked again on every fetch. A card, a record
+  read at a revision, or an overlay record has no sha256 and is pinned by its
+  revision instead.
 
 ### Private records
 

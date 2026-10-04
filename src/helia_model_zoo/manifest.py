@@ -192,6 +192,9 @@ class Record:
     upstream: Upstream | None
     io: IO
     precisions: dict[str, Precision]
+    revision: str | None = None
+    """The commit this record was read at by ``helia_model_zoo.get``: of this repository, or of the overlay
+    dataset for a private record. None for the installed records."""
 
     def precision(self, name: str | None = None) -> Precision:
         """The named precision, or the only one when ``name`` is None."""
@@ -203,21 +206,29 @@ class Record:
             raise KeyError(f"{self.id} has no precision {name!r}; it has {sorted(self.precisions)}")
         return self.precisions[name]
 
-    def fetch(self, precision: str | None = None, **options: Any) -> Path:
-        """The verified local path of a precision's model; ``options`` go to ``fetch_file``."""
+    def fetch_file(self, ref: FileRef, **options: Any) -> Path:
+        """The verified local path of one of this record's files, always at this record's revision when it has one.
+
+        ``options`` go to ``helia_model_zoo.hydrate.fetch_file``.
+        """
         from .hydrate import fetch_file
 
-        return fetch_file(self.precision(precision).model, **options)
+        if self.revision is not None:
+            options["revision"] = self.revision
+        return fetch_file(ref, **options)
+
+    def fetch(self, precision: str | None = None, **options: Any) -> Path:
+        """The verified local path of a precision's model."""
+        return self.fetch_file(self.precision(precision).model, **options)
 
     def golden(self, precision: str | None = None, **options: Any) -> GoldenData:
         """A precision's golden arrays and metadata, from a verified local file."""
         from .golden import load_golden
-        from .hydrate import fetch_file
 
         chosen = self.precision(precision)
         if chosen.golden is None:
             raise KeyError(f"{self.id} {chosen.name} has no golden")
-        return load_golden(fetch_file(chosen.golden.file, **options), chosen)
+        return load_golden(self.fetch_file(chosen.golden.file, **options), chosen)
 
     def files(self) -> tuple[FileRef, ...]:
         """The card, then each precision's model and golden."""
@@ -230,9 +241,7 @@ class Record:
 
     def card(self, **options: Any) -> Path:
         """The verified local path of the model card."""
-        from .hydrate import fetch_file
-
-        return fetch_file(self.card_file, **options)
+        return self.fetch_file(self.card_file, **options)
 
 
 @dataclass(frozen=True)

@@ -217,10 +217,12 @@ def _overlay(tmp_path, data, model_id="private-vad"):
 
 def test_overlay_joins_the_packaged_records(monkeypatch, tmp_path, data):
     server = Server(monkeypatch)
+    entry(data, "rnnoise")["precisions"]["a8w8"]["golden"].update(sha256=SHA, bytes=len(BODY))
     monkeypatch.setenv("HELIA_ZOO_OVERLAY", str(_overlay(tmp_path, data)))
     assert {"rnnoise", "private-vad"} <= {r.id for r in zoo.records()}
     assert zoo.fetch("private-vad").read_bytes() == BODY
-    assert zoo.resolve("zoo://private-vad/a8w8").read_bytes() == BODY
+    resolved = zoo.resolve("zoo://private-vad/a8w8")
+    assert resolved.model.read_bytes() == BODY and resolved.golden.read_bytes() == BODY
     assert server.hf[0][0] == "Example/models"
 
 
@@ -282,6 +284,122 @@ def test_entry_api_from_a_checkout(root):
     assert len(golden.inputs) == 4 and len(golden.outputs) == 5 and golden.meta.resolver == "builtin_ref"
     assert item.card(root=root) == root / "models/rnnoise/README.md"
     assert zoo.fetch("rnnoise", root=root) == root / "models/rnnoise/a8w8/model.tflite"
+    resolved = zoo.resolve("zoo://rnnoise", root=root)
+    assert (resolved.record, resolved.precision) == (item, item.precisions["a8w8"])
+    assert (resolved.model, resolved.golden) == (
+        root / "models/rnnoise/a8w8/model.tflite",
+        root / "models/rnnoise/a8w8/golden.npz",
+    )
+
+
+@pytest.mark.parametrize(
+    ("uri", "parts"),
+    [
+        ("zoo://rnnoise", ("rnnoise", None, None)),
+        ("zoo://rnnoise/a8w8", ("rnnoise", "a8w8", None)),
+        (f"zoo://rnnoise@{COMMIT}", ("rnnoise", None, COMMIT)),
+        (f"zoo://dfnet2/a16w8@{COMMIT}", ("dfnet2", "a16w8", COMMIT)),
+    ],
+)
+def test_reference_forms(uri, parts):
+    reference = zoo.parse_reference(uri)
+    assert (reference.id, reference.precision, reference.revision) == parts
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "rnnoise",
+        "zoo://",
+        "zoo://rnnoise/",
+        "zoo://RNNoise",
+        "zoo://../rnnoise",
+        "zoo://rnnoise/a8w8/model.tflite",
+        "zoo://rnnoise@main",
+        "zoo://rnnoise/a8w8@" + "0" * 39,
+        "zoo://rnnoise/a8w8@" + "A" * 40,
+    ],
+)
+def test_malformed_reference_is_refused(monkeypatch, uri):
+    server = Server(monkeypatch)
+    with pytest.raises(ValueError, match="expected zoo://"):
+        zoo.resolve(uri)
+    assert server.urls == []
+
+
+def test_a_record_at_another_revision_comes_from_that_commit(monkeypatch, tmp_path, data):
+    item = entry(data, "rnnoise")
+    item["title"] = "RNNoise, as recorded at COMMIT"
+    for key in ("model", "golden"):
+        item["precisions"]["a8w8"][key].update(sha256=SHA, bytes=len(BODY))
+    served = {"models/rnnoise/record.json": json.dumps(item).encode()}
+    urls = []
+
+    def download(url, destination, limit=None):
+        urls.append(url)
+        destination.write_bytes(served.get(url.split(f"/{COMMIT}/", 1)[1], BODY))
+
+    monkeypatch.setattr(hydrate, "_download_url", download)
+    monkeypatch.setattr(hydrate, "_install", lambda: {"vcs_info": {"commit_id": "f" * 40}})
+    (tmp_path / "repo/models/rnnoise/a8w8").mkdir(parents=True)
+    (tmp_path / "repo/models/rnnoise/a8w8/model.tflite").write_bytes(b"the checkout's other model")
+    monkeypatch.setenv("HELIA_ZOO_ROOT", str(tmp_path / "repo"))
+
+    resolved = zoo.resolve(f"zoo://rnnoise/a8w8@{COMMIT}")
+    assert resolved.record.title == "RNNoise, as recorded at COMMIT" and resolved.record.revision == COMMIT
+    assert resolved.model == tmp_path / "cache" / SHA / "model.tflite" and resolved.golden.read_bytes() == BODY
+    assert urls[0] == f"https://raw.githubusercontent.com/AmbiqAI/helia-model-zoo/{COMMIT}/models/rnnoise/record.json"
+    assert resolved.record.card() == tmp_path / "cache/text/repo" / COMMIT / "models/rnnoise/README.md"
+    assert zoo.fetch("rnnoise", revision=COMMIT) == resolved.model
+    assert resolved.record.card(revision="f" * 40) == resolved.record.card()
+    assert all(f"/{COMMIT}/" in url for url in urls)
+    assert zoo.get("rnnoise").revision is None
+    other = zoo.resolve(f"zoo://rnnoise@{COMMIT}", cache=tmp_path / "other")
+    assert (tmp_path / "other/text/repo" / COMMIT / "models/rnnoise/record.json").is_file()
+    assert other.model == tmp_path / "other" / SHA / "model.tflite"
+    assert zoo.fetch("rnnoise", revision=COMMIT, cache=tmp_path / "third") == tmp_path / "third" / SHA / "model.tflite"
+    assert (tmp_path / "third/text/repo" / COMMIT / "models/rnnoise/record.json").is_file()
+    with pytest.raises(TypeError, match="takes the revision in the reference"):
+        zoo.resolve("zoo://rnnoise/a8w8", revision=COMMIT)
+
+
+def test_an_explicit_revision_reads_only_hashed_files_from_an_explicit_checkout(monkeypatch, tmp_path):
+    server = Server(monkeypatch)
+    (tmp_path / "repo/audio/x").mkdir(parents=True)
+    (tmp_path / "repo/audio/x/README.md").write_text("the checkout's card")
+    (tmp_path / "repo/audio/x/model.tflite").write_bytes(BODY)
+    monkeypatch.setenv("HELIA_ZOO_ROOT", str(tmp_path / "repo"))
+    text, model = FileRef("repo://audio/x/README.md"), artifact("lfs://audio/x/model.tflite")
+    assert fetch_file(text) == tmp_path / "repo/audio/x/README.md" and server.urls == []
+    assert fetch_file(model, revision=COMMIT) == tmp_path / "cache" / SHA / "model.tflite" and len(server.urls) == 1
+    assert fetch_file(model, root=tmp_path / "repo", revision=COMMIT) == tmp_path / "repo/audio/x/model.tflite"
+    assert fetch_file(text, root=tmp_path / "repo", revision=COMMIT).read_bytes() == BODY and len(server.urls) == 2
+
+
+@pytest.mark.parametrize("visibility", ["private", "public"])
+def test_a_private_record_resolves_only_at_its_overlay_revision(monkeypatch, tmp_path, data, visibility):
+    path = _overlay(tmp_path, data) / "models/private-vad/record.json"
+    path.write_text(json.dumps(dict(json.loads(path.read_text()), visibility=visibility)))
+    record = path.read_bytes()
+    server = Server(monkeypatch, record)
+    server.files = ["models/private-vad/record.json"]
+    monkeypatch.setenv("HELIA_ZOO_OVERLAY", "hf://datasets/Example/index@" + "c" * 40)
+    assert zoo.get("private-vad", "c" * 40).revision == "c" * 40
+    with pytest.raises(KeyError, match="private-vad is private: set HELIA_ZOO_OVERLAY to its overlay dataset at d"):
+        zoo.get("private-vad", "d" * 40)
+    monkeypatch.setenv("HELIA_ZOO_OVERLAY", str(tmp_path / "overlay"))
+    zoo.manifest.cache_clear()
+    with pytest.raises(KeyError, match="is private"):
+        zoo.get("private-vad", "c" * 40)
+    assert server.urls == []
+
+
+@pytest.mark.parametrize(("model_id", "revision"), [("rnnoise", "main"), ("rnnoise", "A" * 40), ("../x", COMMIT)])
+def test_get_at_a_malformed_revision_or_id_is_refused(monkeypatch, model_id, revision):
+    server = Server(monkeypatch)
+    with pytest.raises(ValueError, match="full 40-hex commit"):
+        zoo.get(model_id, revision)
+    assert server.urls == []
 
 
 @pytest.mark.skipif(os.environ.get("HELIA_ZOO_LIVE") != "1", reason="set HELIA_ZOO_LIVE=1 to reach Hugging Face")
