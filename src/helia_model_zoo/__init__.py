@@ -33,7 +33,9 @@ from .overlay import OVERLAY_ENV, hf_root, load_overlay, overlay_location
 
 __version__ = "0.1.0"
 
-_REFERENCE = re.compile(rf"zoo://(?P<id>{_ID.pattern})(?:/(?P<precision>[a-z0-9]+))?(?:@(?P<revision>[0-9a-f]{{40}}))?")
+_REFERENCE = re.compile(
+    rf"zoo://(?P<id>{_ID.pattern})(?:/(?P<precision>[a-z0-9]+))?(?:@(?P<revision>{_REVISION.pattern}))?"
+)
 
 
 @cache
@@ -52,17 +54,19 @@ def records() -> tuple[Record, ...]:
     return manifest().records
 
 
-def get(model_id: str, revision: str | None = None) -> Record:
+def get(model_id: str, revision: str | None = None, **options) -> Record:
     """The record with this ID: the installed one, or the one at ``revision``, a full 40-hex commit.
 
-    At a revision, a public record is read from this repository at that commit, and its files then come
-    from the same commit. A private record comes from the overlay, which must be pinned to that revision.
+    At a revision, a public record is downloaded from this repository at that commit (``options`` go to
+    :func:`helia_model_zoo.hydrate.fetch_file`), and its files then come from the same commit. Only the overlay
+    makes an ID private; a private record is the overlay's, which must be pinned to that revision.
 
     Raises:
         KeyError: If the ID is not installed (without a revision), or is private and its overlay is at another
             revision.
         ValueError: If ``revision`` is not a full 40-hex commit.
-        helia_model_zoo.hydrate.FetchError: If the record cannot be read at that revision.
+        helia_model_zoo.hydrate.FetchError: If the record cannot be downloaded at that revision.
+        ManifestError: If the record is not record@1.
     """
     if revision is None:
         return manifest().get(model_id)
@@ -80,7 +84,7 @@ def get(model_id: str, revision: str | None = None) -> Record:
         return replace(installed, revision=revision)
     from .hydrate import fetch_file
 
-    path = fetch_file(FileRef(f"repo://{MODELS}/{model_id}/record.json"), revision=revision)
+    path = fetch_file(FileRef(f"repo://{MODELS}/{model_id}/record.json"), **options, revision=revision)
     return replace(parse_record(read_record(path.read_bytes(), path), model_id), revision=revision)
 
 
@@ -89,7 +93,7 @@ def fetch(model_id: str, precision: str | None = None, revision: str | None = No
 
     ``options`` go to :func:`helia_model_zoo.hydrate.fetch_file`.
     """
-    return get(model_id, revision).fetch(precision, **options)
+    return get(model_id, revision, **options).fetch(precision, **options)
 
 
 @dataclass(frozen=True)
@@ -124,12 +128,12 @@ class Resolved:
 
 
 def resolve(uri: str, **options) -> Resolved:
-    """Resolve ``zoo://<id>[/<precision>][@<revision>]``; without a revision, the installed record is used.
+    """Resolve ``zoo://<id>[/<precision>][@<revision>]`` (see :func:`get`), fetching its model and golden.
 
-    ``options`` go to :func:`helia_model_zoo.hydrate.fetch_file`.
+    Without a revision, the installed record is used. ``options`` go to :func:`helia_model_zoo.hydrate.fetch_file`.
     """
     reference = parse_reference(uri)
-    record = get(reference.id, reference.revision)
+    record = get(reference.id, reference.revision, **options)
     precision = record.precision(reference.precision)
     golden = None if precision.golden is None else record.fetch_file(precision.golden.file, **options)
     return Resolved(record, precision, record.fetch_file(precision.model, **options), golden)

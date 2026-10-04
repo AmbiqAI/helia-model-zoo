@@ -193,7 +193,8 @@ class Record:
     io: IO
     precisions: dict[str, Precision]
     revision: str | None = None
-    """The commit this record was read at (``helia_model_zoo.get``); None for the installed records."""
+    """The commit this record was read at by ``helia_model_zoo.get``: of this repository, or of the overlay
+    dataset for a private record. None for the installed records."""
 
     def precision(self, name: str | None = None) -> Precision:
         """The named precision, or the only one when ``name`` is None."""
@@ -206,14 +207,14 @@ class Record:
         return self.precisions[name]
 
     def fetch_file(self, ref: FileRef, **options: Any) -> Path:
-        """The verified local path of one of this record's files, at this record's revision when it has one.
+        """The verified local path of one of this record's files, always at this record's revision when it has one.
 
         ``options`` go to ``helia_model_zoo.hydrate.fetch_file``.
         """
         from .hydrate import fetch_file
 
         if self.revision is not None:
-            options.setdefault("revision", self.revision)
+            options["revision"] = self.revision
         return fetch_file(ref, **options)
 
     def fetch(self, precision: str | None = None, **options: Any) -> Path:

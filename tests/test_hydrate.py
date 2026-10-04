@@ -351,19 +351,25 @@ def test_a_record_at_another_revision_comes_from_that_commit(monkeypatch, tmp_pa
     assert urls[0] == f"https://raw.githubusercontent.com/AmbiqAI/helia-model-zoo/{COMMIT}/models/rnnoise/record.json"
     assert resolved.record.card() == tmp_path / "cache/text/repo" / COMMIT / "models/rnnoise/README.md"
     assert zoo.fetch("rnnoise", revision=COMMIT) == resolved.model
+    assert resolved.record.card(revision="f" * 40) == resolved.record.card()
     assert all(f"/{COMMIT}/" in url for url in urls)
     assert zoo.get("rnnoise").revision is None
+    other = zoo.resolve(f"zoo://rnnoise@{COMMIT}", cache=tmp_path / "other")
+    assert (tmp_path / "other/text/repo" / COMMIT / "models/rnnoise/record.json").is_file()
+    assert other.model == tmp_path / "other" / SHA / "model.tflite"
 
 
-def test_an_explicit_revision_skips_the_ambient_checkout(monkeypatch, tmp_path):
+def test_an_explicit_revision_reads_only_hashed_files_from_an_explicit_checkout(monkeypatch, tmp_path):
     server = Server(monkeypatch)
     (tmp_path / "repo/audio/x").mkdir(parents=True)
     (tmp_path / "repo/audio/x/README.md").write_text("the checkout's card")
+    (tmp_path / "repo/audio/x/model.tflite").write_bytes(BODY)
     monkeypatch.setenv("HELIA_ZOO_ROOT", str(tmp_path / "repo"))
-    text = FileRef("repo://audio/x/README.md")
+    text, model = FileRef("repo://audio/x/README.md"), artifact("lfs://audio/x/model.tflite")
     assert fetch_file(text) == tmp_path / "repo/audio/x/README.md" and server.urls == []
-    assert fetch_file(text, revision=COMMIT).read_bytes() == BODY and len(server.urls) == 1
-    assert fetch_file(text, root=tmp_path / "repo", revision=COMMIT) == tmp_path / "repo/audio/x/README.md"
+    assert fetch_file(model, revision=COMMIT) == tmp_path / "cache" / SHA / "model.tflite" and len(server.urls) == 1
+    assert fetch_file(model, root=tmp_path / "repo", revision=COMMIT) == tmp_path / "repo/audio/x/model.tflite"
+    assert fetch_file(text, root=tmp_path / "repo", revision=COMMIT).read_bytes() == BODY and len(server.urls) == 2
 
 
 def test_a_private_record_resolves_only_at_its_overlay_revision(monkeypatch, tmp_path, data):
