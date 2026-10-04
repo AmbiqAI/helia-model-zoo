@@ -142,8 +142,18 @@ record.io.state_pairs              # explicit state: which output feeds which in
 
 model = record.fetch("a8w8")       # a local path whose sha256 matches the record
 golden = record.golden("a8w8")     # golden.inputs / golden.outputs as NumPy arrays
-zoo.resolve("zoo://rnnoise/a8w8")  # the same model by URI
+
+art = zoo.resolve("zoo://rnnoise/a8w8@<40-hex commit>")  # the model as recorded at that commit
+art.record, art.precision          # the record and precision at that commit
+art.model, art.golden              # their verified local files
 ```
+
+A reference is `zoo://<id>[/<precision>][@<commit>]`; `zoo.parse_reference()`
+splits one. With a commit, the record is read from this repository at that
+commit (`zoo.get(id, revision)`), whichever version is installed, and its files
+come from the same commit; records exist from 83ed7226 on. A private ID resolves
+only at the revision its overlay is pinned to. Without a commit, the installed
+record is used, so pin one wherever results must be reproducible.
 
 `helia-zoo list`, `show <id>`, `fetch <id> [--golden] [--card]` and `validate`
 expose the same on the command line. Installing from Git with git-lfs present
@@ -155,7 +165,9 @@ Files are fetched as follows:
 - Files in this repository are read from a hydrated checkout when there is one
   (`root=`, `HELIA_ZOO_ROOT`, or an editable install). Otherwise they are
   downloaded from GitHub at the commit the package was installed from
-  (`HELIA_ZOO_REVISION` overrides it).
+  (`HELIA_ZOO_REVISION` overrides it). At an explicit revision, only a `root=`
+  checkout is read, since `HELIA_ZOO_ROOT` or an editable install may be at
+  another commit.
 - `hf://` sources (`hf://[datasets/]<org>/<repo>@<40-hex commit>/<path>`) need
   the `hf` extra and use huggingface_hub's own login (`HF_TOKEN` or
   `hf auth login`).

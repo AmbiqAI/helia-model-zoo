@@ -164,15 +164,16 @@ def fetch_file(
 ) -> Path:
     """Return a local path whose bytes match ``ref``, downloading into the cache if needed.
 
-    A repository file comes from ``root`` (default :func:`local_checkout`) when hydrated there,
-    else from GitHub at ``revision`` (default :func:`installed_revision`). A cached copy is re-verified on every
+    A repository file comes from ``root`` when hydrated there, else from GitHub at ``revision`` (default
+    :func:`installed_revision`). ``root`` defaults to :func:`local_checkout` only when no ``revision`` is given,
+    since that checkout may be at another commit. A cached copy is re-verified on every
     call and replaced if it no longer matches. A download is verified before it is moved into
     place, so the cache never holds an unverified file.
 
     Args:
         ref: The record file to fetch.
         root: A checkout of this repository.
-        revision: The repository commit to download repository files from.
+        revision: The repository commit to read repository files at.
         cache: The cache directory (default :func:`cache_dir`).
         anonymous: Download without credentials, as public CI does.
 
@@ -180,7 +181,8 @@ def fetch_file(
         FetchError: If the file cannot be found or downloaded, or its bytes do not match.
     """
     if ref.in_repository:
-        root = local_checkout() if root is None else root
+        if root is None and revision is None:
+            root = local_checkout()
         if root is not None:
             try:
                 local = ref.resolve(root)
