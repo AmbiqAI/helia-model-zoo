@@ -48,7 +48,7 @@ def interpreter(model: Path, resolver: str | None = None) -> Any:
 
 
 def describe(detail: dict[str, Any]) -> Tensor:
-    """A LiteRT input or output detail as a manifest tensor."""
+    """A LiteRT input or output detail as a record tensor."""
     scale, zero_point = detail["quantization"]
     quantized = scale != 0.0
     return Tensor(

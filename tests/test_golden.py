@@ -13,11 +13,11 @@ import helia_model_zoo as zoo
 from helia_model_zoo import golden
 from helia_model_zoo.cli import main
 from helia_model_zoo.golden import GoldenError, check, generate, reset_value, state_pairs_from_names
-from helia_model_zoo.manifest import IO, FileRef, Golden, StatePair, Tensor, parse_manifest
+from helia_model_zoo.manifest import IO, FileRef, Golden, StatePair, Tensor, parse_records
 from helia_model_zoo.validate import ValidationError, validate
 
-DFNET2 = "audio/dfnet2/model.tflite"
-RNNOISE = "audio/rnnoise/model.tflite"
+DFNET2 = "models/dfnet2/a16w8/model.tflite"
+RNNOISE = "models/rnnoise/a8w8/model.tflite"
 
 
 @pytest.fixture
@@ -95,10 +95,8 @@ def test_untied_quantized_state_cannot_be_a_sequence(rnnoise):
 def test_batch_rows_start_from_reset(rnnoise):
     model, precision, io = rnnoise
     arrays = generate(model, precision, io, kind="batch", steps=3, seed=5)
-    for pair in io.state_pairs:
-        assert all(
-            np.array_equal(row, reset_value(precision.inputs[pair.input])) for row in arrays[f"input_{pair.input}"]
-        )
+    for i, _ in precision.pair_indices(io):
+        assert all(np.array_equal(row, reset_value(precision.inputs[i])) for row in arrays[f"input_{i}"])
     assert problems(arrays, precision, io, "batch", 3) == []
     arrays["input_3"] = arrays["input_3"].copy()
     arrays["input_3"][1].flat[0] += 1
@@ -164,11 +162,23 @@ def test_state_pairs_from_names():
         state_pairs_from_names(inputs, outputs)
     names = (["x", "state_in_0", "state_in_1"], ["state_out_1", "y", "state_out_0"])
     assert state_pairs_from_names(inputs, outputs, names) == (
-        StatePair(1, 2, "zeros", True),
-        StatePair(2, 0, "zeros", True),
+        StatePair("serving_default_state_in_0:0", "y"),
+        StatePair("state_in_1", "StatefulPartitionedCall:0"),
     )
     with pytest.raises(GoldenError, match="unpaired"):
         state_pairs_from_names(inputs, outputs, (names[0], ["state_out_1", "y", "z"]))
+
+
+def test_a_pair_needs_uniquely_named_tensors():
+    tensor = lambda name: Tensor(name, (1, 4), "int8", 0.5, 0)  # noqa: E731
+    inputs, outputs = [tensor("x"), tensor("x")], [tensor("y")]
+    with pytest.raises(GoldenError, match="'x' is not unique"):
+        golden.pairs_by_index(inputs, outputs, [(1, 0)])
+    with pytest.raises(GoldenError, match="'y' is not unique"):
+        golden.pairs_by_index([tensor("a")], [tensor("y"), tensor("y")], [(0, 1)])
+    # Signature names can pair a tensor whose name another tensor shares.
+    with pytest.raises(GoldenError, match="'x' is not unique"):
+        state_pairs_from_names(inputs, outputs, (["data", "state_in_0"], ["state_out_0"]))
 
 
 def test_standalone_check(dfnet2, tmp_path):
@@ -186,33 +196,30 @@ def test_standalone_check(dfnet2, tmp_path):
 
 def test_validate_a_sequence_entry(root, tmp_path, data, dfnet2):
     model, precision, io = dfnet2
-    (tmp_path / "audio/dfnet2").mkdir(parents=True)
-    for name in ("model.tflite", "README.md"):
-        (tmp_path / "audio/dfnet2" / name).write_bytes((root / "audio/dfnet2" / name).read_bytes())
-    path = tmp_path / "audio/dfnet2/sequence.npz"
+    (tmp_path / "models/dfnet2/a16w8").mkdir(parents=True)
+    for name in ("a16w8/model.tflite", "README.md"):
+        (tmp_path / "models/dfnet2" / name).write_bytes((root / "models/dfnet2" / name).read_bytes())
+    path = tmp_path / "models/dfnet2/a16w8/sequence.npz"
     golden.write(path, generate(model, precision, io, kind="sequence", steps=4, resets=[2]))
     item = entry(data, "dfnet2")
-    item["precisions"]["int16x8"]["golden"] = {
-        "file": {
-            "uri": "lfs://audio/dfnet2/sequence.npz",
-            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-            "bytes": path.stat().st_size,
-        },
+    item["precisions"]["a16w8"]["golden"] = {
+        "path": "a16w8/sequence.npz",
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "bytes": path.stat().st_size,
         "kind": "sequence",
         "steps": 4,
         "resets": [2],
         "source": {"seed": 42},
-        "reference_runtime": "ai-edge-litert",
-        "reference_runtime_version": "2.1.2",
+        "runtime": "ai-edge-litert==2.1.2",
         "resolver": "builtin_ref",
     }
-    only = parse_manifest({"schema": data["schema"], "entries": [item]})
+    only = parse_records({"dfnet2": item})
     validate(tmp_path, only, replay=True)
-    item["precisions"]["int16x8"]["golden"]["resets"] = []
+    item["precisions"]["a16w8"]["golden"]["resets"] = []
     with pytest.raises(ValidationError) as caught:
-        validate(tmp_path, parse_manifest({"schema": data["schema"], "entries": [item]}))
+        validate(tmp_path, parse_records({"dfnet2": item}))
     assert caught.value.problems == [
-        "entry dfnet2.precisions.int16x8.golden: input_2 at step 2 is not output_4 of step 1"
+        "record dfnet2.precisions.a16w8.golden: input_2 at step 2 is not output_4 of step 1"
     ]
 
 
@@ -233,13 +240,13 @@ def test_cli_generate_and_check(root, tmp_path, capsys):
         "--pair",
         "2:4",
     ]
-    assert main([*args, "--print-manifest", "--uri", "lfs://audio/dfnet2/seq.npz"]) == 0
+    assert main([*args, "--print-record", "--path", "a16w8/seq.npz"]) == 0
     block = json.loads(capsys.readouterr().out)
-    assert block["file"] == {
-        "uri": "lfs://audio/dfnet2/seq.npz",
-        "sha256": hashlib.sha256(out.read_bytes()).hexdigest(),
-        "bytes": out.stat().st_size,
-    }
+    assert (block["path"], block["sha256"], block["bytes"]) == (
+        "a16w8/seq.npz",
+        hashlib.sha256(out.read_bytes()).hexdigest(),
+        out.stat().st_size,
+    )
     assert (block["kind"], block["steps"], block["resets"], block["source"]) == ("sequence", 4, [2], {"seed": 42})
     check_args = ["golden", "check", model, str(out), "--kind", "sequence", "--steps", "4", "--pair", "2:4"]
     assert main([*check_args, "--resets", "2"]) == 0
@@ -253,8 +260,8 @@ def test_cli_generate_and_check(root, tmp_path, capsys):
                 "generate",
                 model,
                 str(entry_out),
-                "--entry",
-                "dfnet2-int16",
+                "--record",
+                "dfnet2",
                 "--kind",
                 "sequence",
                 "--steps",
@@ -270,7 +277,7 @@ def test_cli_generate_and_check(root, tmp_path, capsys):
                 "generate",
                 str(root / RNNOISE),
                 str(tmp_path / "r.npz"),
-                "--entry",
+                "--record",
                 "rnnoise",
                 "--kind",
                 "sequence",
@@ -363,7 +370,7 @@ def test_carry_reshapes_the_output(rnnoise):
     tied = replace(
         precision, outputs=(*precision.outputs[:3], replace(out, scale=precision.inputs[1].scale), precision.outputs[4])
     )
-    io = IO("explicit_state", (StatePair(1, 3, "zeros", True),))
+    io = IO("explicit_state", (StatePair(tied.inputs[1].name, tied.outputs[3].name),))
     produced = np.arange(3 * 24, dtype=np.int8).reshape(3, 1, 1, 24)
     fed = np.stack([reset_value(tied.inputs[1]), produced[0].reshape(1, 24), produced[1].reshape(1, 24)])
     arrays = {f"input_{i}": np.stack([reset_value(t)] * 3) for i, t in enumerate(tied.inputs)}
@@ -410,34 +417,31 @@ def test_standalone_check_replays_with_its_resolver_and_version(rnnoise, tmp_pat
 
 def test_validate_replays_every_sequence_step(root, tmp_path, data, dfnet2):
     model, precision, io = dfnet2
-    (tmp_path / "audio/dfnet2").mkdir(parents=True)
-    for name in ("model.tflite", "README.md"):
-        (tmp_path / "audio/dfnet2" / name).write_bytes((root / "audio/dfnet2" / name).read_bytes())
-    path = tmp_path / "audio/dfnet2/sequence.npz"
+    (tmp_path / "models/dfnet2/a16w8").mkdir(parents=True)
+    for name in ("a16w8/model.tflite", "README.md"):
+        (tmp_path / "models/dfnet2" / name).write_bytes((root / "models/dfnet2" / name).read_bytes())
+    path = tmp_path / "models/dfnet2/a16w8/sequence.npz"
     arrays = generate(model, precision, io, kind="sequence", steps=3)
     tamper(arrays, "output_3", 2)
     golden.write(path, arrays)
     item = entry(data, "dfnet2")
-    item["precisions"]["int16x8"]["golden"] = {
-        "file": {
-            "uri": "lfs://audio/dfnet2/sequence.npz",
-            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-            "bytes": path.stat().st_size,
-        },
+    item["precisions"]["a16w8"]["golden"] = {
+        "path": "a16w8/sequence.npz",
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "bytes": path.stat().st_size,
         "kind": "sequence",
         "steps": 3,
         "resets": [],
         "source": {"seed": 42},
-        "reference_runtime": "ai-edge-litert",
-        "reference_runtime_version": "2.1.2",
+        "runtime": "ai-edge-litert==2.1.2",
         "resolver": "builtin_ref",
     }
-    only = parse_manifest({"schema": data["schema"], "entries": [item]})
+    only = parse_records({"dfnet2": item})
     validate(tmp_path, only)
     with pytest.raises(ValidationError) as caught:
         validate(tmp_path, only, replay=True)
     assert caught.value.problems[0].startswith(
-        "entry dfnet2.precisions.int16x8.golden: output_3 at step 2 does not replay exactly"
+        "record dfnet2.precisions.a16w8.golden: output_3 at step 2 does not replay exactly"
     )
 
 
@@ -457,7 +461,7 @@ def test_cli_check_no_replay(root, tmp_path, dfnet2):
     [
         (["--pair", "2"], 1, "--pair expects IN:OUT"),
         (["--pair", "9:9"], 1, "out of range"),
-        (["--entry", "dfnet2", "--pair", "2:4"], 2, "cannot be combined"),
+        (["--record", "dfnet2", "--pair", "2:4"], 2, "cannot be combined"),
     ],
 )
 def test_cli_generate_argument_errors(root, tmp_path, capsys, extra, code, message):
@@ -485,11 +489,11 @@ def test_cli_generate_data_errors(root, tmp_path, capsys):
     assert "--data keys must be input_N" in capsys.readouterr().err
     partial = tmp_path / "partial.npz"
     np.savez(partial, input_0=np.zeros((2, 1, 1, 1, 32), np.int16))
-    recorded = ["--print-manifest", "--source-uri", "https://example.com/a.wav", "--source-sha256", "0" * 64]
+    recorded = ["--print-record", "--source-uri", "https://example.com/a.wav", "--source-sha256", "0" * 64]
     assert main([*args, "--data", str(partial), *recorded]) == 1
     assert "missing [1]" in capsys.readouterr().err
     assert not (tmp_path / "g.npz").exists()
-    assert main([*args, "--data", str(partial), "--print-manifest"]) == 2
+    assert main([*args, "--data", str(partial), "--print-record"]) == 2
     assert not (tmp_path / "g.npz").exists()
 
 
@@ -595,7 +599,7 @@ def test_signature_names_pair_state(fake):
     inputs, outputs = fake
     assert runtime.signature_names("fake.tflite") == (["x", "state_in_0"], ["y", "state_out_0"])
     assert state_pairs_from_names(inputs, outputs, runtime.signature_names("fake.tflite")) == (
-        StatePair(1, 1, "zeros", True),
+        StatePair("serving_default_s:0", "StatefulPartitionedCall:1"),
     )
 
 
@@ -604,7 +608,7 @@ def test_sequence_carry_reshapes_and_floats_are_drawn_as_floats(fake, tmp_path):
 
     inputs, outputs = fake
     precision = Precision("fake", FileRef("repo://fake.tflite"), inputs, outputs, None)
-    io = IO("explicit_state", (StatePair(1, 1, "zeros", True),))
+    io = IO("explicit_state", (StatePair("serving_default_s:0", "StatefulPartitionedCall:1"),))
     arrays = generate("fake.tflite", precision, io, kind="sequence", steps=4, resets=[2], seed=0)
     assert arrays["input_1"][:, 0, 0].tolist() == [-3, -2, -3, -2]
     assert not np.all(arrays["input_0"] == np.round(arrays["input_0"]))
@@ -614,18 +618,17 @@ def test_sequence_carry_reshapes_and_floats_are_drawn_as_floats(fake, tmp_path):
     assert check("fake.tflite", path, kind="sequence", steps=4, resets=[2]) == []
 
 
-def test_cli_manifest_block_records_resolver_and_version(root, tmp_path, capsys):
+def test_cli_record_block_records_resolver_and_runtime(root, tmp_path, capsys):
     from importlib import metadata
 
     out = tmp_path / "g.npz"
-    assert main(["golden", "generate", str(root / RNNOISE), str(out), "--print-manifest"]) == 0
+    assert main(["golden", "generate", str(root / RNNOISE), str(out), "--print-record"]) == 0
     block = json.loads(capsys.readouterr().out)
-    assert (block["resolver"], block["reference_runtime"], block["reference_runtime_version"]) == (
+    assert (block["resolver"], block["runtime"]) == (
         "builtin_ref",
-        "ai-edge-litert",
-        metadata.version("ai-edge-litert"),
+        f"ai-edge-litert=={metadata.version('ai-edge-litert')}",
     )
-    assert main(["golden", "generate", str(root / RNNOISE), str(out), "--print-manifest", "--resolver", "builtin"]) == 0
+    assert main(["golden", "generate", str(root / RNNOISE), str(out), "--print-record", "--resolver", "builtin"]) == 0
     assert json.loads(capsys.readouterr().out)["resolver"] == "builtin"
 
 

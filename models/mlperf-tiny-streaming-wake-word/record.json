@@ -1,0 +1,55 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "mlperf-tiny-streaming-wake-word",
+  "title": "Streaming Wake Word",
+  "task": "wake-word-detection",
+  "domain": "audio",
+  "visibility": "public",
+  "license": {"spdx": "Apache-2.0"},
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://github.com/mlcommons/tiny",
+    "revision": "8e4803009a3be9aede6de47062f185c9eb97d126",
+    "path": "benchmark/training/streaming_wakeword/trained_models/strm_ww_int8.tflite",
+    "sha256": "0275b7139fd5966605a83a318cded2d7dd8ae2a0e69614950c98ff96aa056f28"
+  },
+  "io": {"streaming": "stateless", "state_pairs": []},
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "0275b7139fd5966605a83a318cded2d7dd8ae2a0e69614950c98ff96aa056f28",
+        "bytes": 74520
+      },
+      "inputs": [
+        {
+          "name": "serving_default_input_1:0",
+          "shape": [1, 30, 1, 40],
+          "dtype": "int8",
+          "scale": 0.003701042616739869,
+          "zero_point": -128
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall:0",
+          "shape": [1, 3],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        }
+      ],
+      "golden": {
+        "path": "a8w8/golden.npz",
+        "sha256": "c741b2320db2fdca7a8d06c8f24c01305d7dfe1f800fe9cbcd97950319229773",
+        "bytes": 1719,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": null,
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin_ref"
+      }
+    }
+  }
+}

@@ -1,17 +1,23 @@
 # heliaAOT Model Zoo
 
-This repository is a model zoo for prebuilt TFLite models. The repo groups models by domain, keeps golden input/output fixtures next to those domains when available, and provides lightweight documentation for each model entry.
+This repository is a model zoo for prebuilt TFLite models. Each model has one
+small record, its card, and per precision its TFLite artifact and golden fixture.
 
 ## Repository layout
 
 ```text
-<domain>/<family?>/<model>/
-  README.md
-  golden.npz
-  model.tflite
+models/<id>/
+  record.json          helia-model-zoo/record@1
+  README.md            the model card
+  <precision>/model.tflite
+  <precision>/golden.npz
 ```
 
-Each model directory is self-contained: the TFLite artifact, the checked-in golden fixture when available, and the model card all live together.
+The directory name is the model ID. Precisions are `fp32`, `fp16`, `a8w8`,
+`a16w8` and `a8w4`. There is no other inventory: `helia-zoo list` prints the
+models from the records. No record lists GTCRN (`audio/gtcrn/`) or the float
+MLPerf Tiny models that remain beside it under `audio/`, `vision/` and
+`anomaly-detection/`.
 
 To contribute a model/golden pair for helia-aot release testing, follow
 [Add a model to the release corpus](docs/how-to/add-release-model.md). Adding an
@@ -42,27 +48,26 @@ point, so the state is carried exactly.
 
 ```bash
 helia-zoo golden generate model.tflite golden.npz --kind sequence --steps 64 \
-    --resets 32 --data inputs.npz --print-manifest --uri lfs://audio/x/golden.npz \
+    --resets 32 --data inputs.npz --print-record --path a8w8/golden.npz \
     --source-uri https://example.com/clip.wav --source-sha256 <sha256>
 helia-zoo golden check model.tflite golden.npz --kind sequence --steps 64 --resets 32
 ```
 
-State pairs come from a manifest entry (`--entry`), from `--pair IN:OUT`, or
+State pairs come from a model's record (`--record <id>`), from `--pair IN:OUT`, or
 from `state_in_k`/`state_out_k` signature or tensor names; a sequence without any state
 pair is refused. Inputs not given with `--data` are drawn from `--seed`; when
-`--print-manifest` records a `--data` source, `--data` must give every
+`--print-record` records a `--data` source, `--data` must give every
 non-state input. New goldens use LiteRT's reference kernels
 (`builtin_ref`) unless `--resolver` says otherwise. In Python,
 `helia_model_zoo.golden.check()` checks one golden file against its model
-without a manifest entry.
+without a record.
 
-Two manifests pin every model/golden pair by SHA-256:
-
-- `src/helia_model_zoo/manifest.json` (manifest v2) has one entry per model ID
-  with its precisions, tensors, state pairs, golden metadata, license and
-  upstream source. It ships with the Python package.
-- `corpus-manifest-v1.json` keeps the v1 format that helia-aot reads. Each v1 ID
-  is an alias of a v2 entry, and CI checks that the two agree.
+The records pin every model and golden by SHA-256. Each one lists its
+precisions, tensors, state pairs (by tensor name), golden metadata, licence and
+upstream source. The records ship with the Python package.
+`corpus-manifest-v1.json` keeps the v1 format that helia-aot reads; CI checks
+that each v1 entry agrees with the record holding its model, and that its ID is
+that record's ID with a suffix.
 
 CI hydrates Git LFS and checks artifact hashes, the declared tensors, NPZ keys,
 shapes and dtypes against each TFLite model. It also checks that each golden's
@@ -77,7 +82,7 @@ python tools/validate_corpus.py corpus-manifest-v1.json
 helia-zoo validate --replay
 ```
 
-The per-model README referenced by each manifest entry is the artifact's model
+The README in each model directory is the artifact's model
 card. For third-party models, it must identify the upstream source and the
 applicable upstream license; inclusion in this repository is not a new license
 grant. Do not infer a license solely from a model-family name.
@@ -108,7 +113,7 @@ behaviours differ from earlier versions of the script:
   differ from the earlier script for the same seed. None of the current models
   has such names.
 
-After intentionally changing a golden, update its manifest digest. The review
+After intentionally changing a golden, update its record's digest. The review
 description must state the reference runtime/version, seed and any non-default
 input generation, changed outputs, representative and maximum numerical
 differences from the prior fixture, and approval from the model/corpus owner.
@@ -131,13 +136,13 @@ python -m pip install "helia-model-zoo[litert] @ git+https://github.com/AmbiqAI/
 ```python
 import helia_model_zoo as zoo
 
-entry = zoo.get("rnnoise")         # an ID or a v1 alias such as "rnnoise-int8"
-entry.precisions["int8"].inputs    # names, shapes, dtypes, scales, zero points
-entry.io.state_pairs               # explicit state: which output feeds which input
+record = zoo.get("rnnoise")
+record.precisions["a8w8"].inputs   # names, shapes, dtypes, scales, zero points
+record.io.state_pairs              # explicit state: which output feeds which input
 
-model = entry.fetch("int8")        # a local path whose sha256 matches the manifest
-golden = entry.golden("int8")      # golden.inputs / golden.outputs as NumPy arrays
-zoo.resolve("zoo://rnnoise/int8")  # the same model by URI
+model = record.fetch("a8w8")       # a local path whose sha256 matches the record
+golden = record.golden("a8w8")     # golden.inputs / golden.outputs as NumPy arrays
+zoo.resolve("zoo://rnnoise/a8w8")  # the same model by URI
 ```
 
 `helia-zoo list`, `show <id>`, `fetch <id> [--golden] [--card]` and `validate`
@@ -151,50 +156,30 @@ Files are fetched as follows:
   (`root=`, `HELIA_ZOO_ROOT`, or an editable install). Otherwise they are
   downloaded from GitHub at the commit the package was installed from
   (`HELIA_ZOO_REVISION` overrides it).
-- `https://` sources are downloaded directly.
 - `hf://` sources (`hf://[datasets/]<org>/<repo>@<40-hex commit>/<path>`) need
   the `hf` extra and use huggingface_hub's own login (`HF_TOKEN` or
   `hf auth login`).
 - Every model, golden or other file with a sha256 is checked for size and
   sha256 before it enters the cache (`HELIA_ZOO_CACHE`, default
   `~/.cache/helia-model-zoo`), and checked again on every fetch. A card or
-  overlay manifest without a sha256 is pinned by its revision instead.
+  overlay record without a sha256 is pinned by its revision instead.
 
-### Private entries
+### Private records
 
-Private models never enter this repository. Their entries live in an overlay
-manifest that only its users can read; `HELIA_ZOO_OVERLAY` names it (a local
-path or an `hf://` URI, read once per process), and its entries join the
-packaged ones. Before pushing any change here, run
+Private models never enter this repository. Their records live in an overlay
+with this repository's `models/<id>/record.json` layout that only its users can
+read. `HELIA_ZOO_OVERLAY` names it: a local directory, or a Hugging Face dataset
+root such as `hf://datasets/<org>/<repo>@<40-hex commit>`, read once per
+process. Its records join the packaged ones, and give every file as a pinned
+`hf://` URI rather than a path. Before pushing any change here, run
 
 ```bash
 helia-zoo guard --overlay "$HELIA_ZOO_OVERLAY" --text pr-body.md
 ```
 
-It refuses if any overlay ID, alias, title, Hugging Face repository, upstream
+It refuses if any overlay ID, title, Hugging Face repository, upstream
 or sha256 appears in what a push would publish: the content, paths, messages
 and authors of every commit since `origin/main`, the index and working tree
 (including file names and symlink targets), the branch name, or the extra text
-files. Names that the manifest at `origin/main` also uses are public and are not
+files. Names that the records at `origin/main` also use are public and are not
 reported.
-
-## Domains
-
-- [Audio](audio/README.md)
-- [Vision](vision/README.md)
-- [Anomaly Detection](anomaly-detection/README.md)
-
-## Inventory
-
-| Model | Domain | Family | Task | Quantization | Model | Golden | Docs |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| AD01 | anomaly-detection | MLPerf Tiny | anomaly detection | int8 | [model](anomaly-detection/mlperf-tiny/ad01/model.tflite) | [golden](anomaly-detection/mlperf-tiny/ad01/golden.npz) | [docs](anomaly-detection/mlperf-tiny/ad01/README.md) |
-| KWS Reference | audio | MLPerf Tiny | keyword spotting | int8 | [model](audio/mlperf-tiny/kws_ref/model.tflite) | [golden](audio/mlperf-tiny/kws_ref/golden.npz) | [docs](audio/mlperf-tiny/kws_ref/README.md) |
-| Streaming Wake Word | audio | MLPerf Tiny | wake word detection | int8 | [model](audio/mlperf-tiny/strm_ww/model.tflite) | [golden](audio/mlperf-tiny/strm_ww/golden.npz) | [docs](audio/mlperf-tiny/strm_ww/README.md) |
-| RNNoise | audio | standalone | speech denoising | int8 | [model](audio/rnnoise/model.tflite) | [golden](audio/rnnoise/golden.npz) | [docs](audio/rnnoise/README.md) |
-| Wav2Letter | audio | standalone | speech recognition | int8 | [model](audio/wav2letter/model.tflite) | [golden](audio/wav2letter/golden.npz) | [docs](audio/wav2letter/README.md) |
-| DFNet2 | audio | standalone | speech enhancement | int16 | [model](audio/dfnet2/model.tflite) | [golden](audio/dfnet2/golden.npz) | [docs](audio/dfnet2/README.md) |
-| GTCRN | audio | standalone | speech enhancement | int16 | [model](audio/gtcrn/model.tflite) | `not included` | [docs](audio/gtcrn/README.md) |
-| ResNet | vision | MLPerf Tiny | image classification | int8 | [model](vision/mlperf-tiny/resnet/model.tflite) | [golden](vision/mlperf-tiny/resnet/golden.npz) | [docs](vision/mlperf-tiny/resnet/README.md) |
-| Visual Wake Word | vision | MLPerf Tiny | visual wake word detection | int8 | [model](vision/mlperf-tiny/vww/model.tflite) | [golden](vision/mlperf-tiny/vww/golden.npz) | [docs](vision/mlperf-tiny/vww/README.md) |
-| MobileNet V2 1.0 224 | vision | standalone | image classification | int8 | [model](vision/mobilenet_v2/model.tflite) | [golden](vision/mobilenet_v2/golden.npz) | [docs](vision/mobilenet_v2/README.md) |

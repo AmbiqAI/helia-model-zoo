@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ambiq AI
 # SPDX-License-Identifier: BSD-3-Clause
-"""Refuse to publish a checkout of this public repository that names an overlay's private entries.
+"""Refuse to publish a checkout of this public repository that names an overlay's private records.
 
 Run before every push. The names to look for come from the overlay itself, so no list of
 private names is ever committed here. What is searched, case-insensitively:
@@ -11,24 +11,23 @@ private names is ever committed here. What is searched, case-insensitively:
   symlink targets, and the current branch name;
 - extra text files, such as a pull-request body.
 
-What counts as a private name: each overlay entry's ID, aliases and title (titles shorter
+What counts as a private name: each overlay record's ID and title (titles shorter
 than six characters are skipped), the Hugging Face repositories it uses (``org/repo`` and
 ``repo``), its upstream repository, and every sha256 it pins, plus the overlay's own
-repository. Names that the manifest at ``base`` also uses are public and are skipped. Encoded
+repository. Names that the records at ``base`` also use are public and are skipped. Encoded
 or split spellings are not detected.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from .manifest import Entry, FileRef, Manifest, ManifestError, parse_hf, parse_manifest
+from .manifest import MODELS, Manifest, ManifestError, Record, parse_hf, parse_records, read_record
+from .overlay import hf_root
 
-MANIFEST_PATH = "src/helia_model_zoo/manifest.json"
 _MIN_TITLE = 6
 
 
@@ -41,48 +40,37 @@ class Hit:
     needle: str
 
 
-def _files(entry: Entry) -> list[FileRef]:
-    files = [entry.card_file, entry.license.reference]
-    for precision in entry.precisions.values():
-        files.append(precision.model)
-        if precision.golden is not None:
-            files.append(precision.golden.file)
-    return files
-
-
-def _names(entry: Entry) -> dict[str, str]:
-    found: dict[str, str] = {entry.id.lower(): f"ID of {entry.id}"}
-    for alias in entry.aliases:
-        found[alias.lower()] = f"alias of {entry.id}"
-    if len(entry.title) >= _MIN_TITLE:
-        found[entry.title.lower()] = f"title of {entry.id}"
-    for ref in _files(entry):
+def _names(record: Record) -> dict[str, str]:
+    found: dict[str, str] = {record.id.lower(): f"ID of {record.id}"}
+    if len(record.title) >= _MIN_TITLE:
+        found[record.title.lower()] = f"title of {record.id}"
+    for ref in record.files():
         if ref.scheme == "hf":
             repo = parse_hf(ref.uri).repo_id.lower()
-            found[repo] = f"repository of {entry.id}"
-            found[repo.split("/", 1)[1]] = f"repository of {entry.id}"
+            found[repo] = f"repository of {record.id}"
+            found[repo.split("/", 1)[1]] = f"repository of {record.id}"
         if ref.sha256:
-            found[ref.sha256] = f"sha256 pinned by {entry.id}"
-    if entry.upstream:
-        found[entry.upstream.repo.lower().removesuffix("/")] = f"upstream of {entry.id}"
-        if entry.upstream.sha256:
-            found[entry.upstream.sha256] = f"sha256 pinned by {entry.id}"
+            found[ref.sha256] = f"sha256 pinned by {record.id}"
+    if record.upstream:
+        found[record.upstream.repo.lower().removesuffix("/")] = f"upstream of {record.id}"
+        if record.upstream.sha256:
+            found[record.upstream.sha256] = f"sha256 pinned by {record.id}"
     return found
 
 
 def needles(overlay: Manifest, location: str | None = None, public: Manifest | None = None) -> dict[str, str]:
     """Every private name in ``overlay``, lowercased, mapped to what it is.
 
-    Names that ``public`` also uses are left out: a private entry may share a public
+    Names that ``public`` also uses are left out: a private record may share a public
     upstream or artifact.
     """
     found: dict[str, str] = {}
     if location and location.startswith("hf://"):
-        repo = parse_hf(location).repo_id.lower()
+        repo = hf_root(location).repo_id.lower()
         found[repo] = found[repo.split("/", 1)[1]] = "overlay repository"
-    for entry in overlay.entries:
-        found |= _names(entry)
-    shared = set() if public is None else {n for e in public.entries for n in _names(e)}
+    for record in overlay.records:
+        found |= _names(record)
+    shared = set() if public is None else {n for r in public.records for n in _names(r)}
     return {needle: kind for needle, kind in found.items() if needle not in shared}
 
 
@@ -92,21 +80,28 @@ def _git(root: Path, *args: str, binary: bool = False) -> str | bytes:
 
 
 def public_manifest_at(root: Path, base: str | None) -> Manifest | None:
-    """The packaged manifest as committed at ``base``, or None if there is none.
+    """The records committed at ``base``, or None if there are none.
 
     Raises:
-        ManifestError: If ``base`` has a manifest that does not parse.
+        ManifestError: If a record at ``base`` does not parse.
     """
     if base is None:
         return None
     try:
-        text = _git(root, "show", f"{base}:{MANIFEST_PATH}")
+        listing = _git(root, "ls-tree", "-r", "--name-only", base, "--", MODELS)
     except subprocess.CalledProcessError:
         return None
+    documents = {}
+    for name in listing.splitlines():
+        parts = name.split("/")
+        if len(parts) == 3 and parts[2] == "record.json":
+            documents[parts[1]] = read_record(_git(root, "show", f"{base}:{name}", binary=True), f"{base}:{name}")
+    if not documents:
+        return None
     try:
-        return parse_manifest(json.loads(text))
+        return parse_records(documents)
     except ValueError as error:
-        raise ManifestError(f"manifest at {base}: {error}") from None
+        raise ManifestError(f"records at {base}: {error}") from None
 
 
 class _Scanner:
@@ -162,7 +157,7 @@ def scan(
 
     Raises:
         subprocess.CalledProcessError: If git fails, for example on an unknown ``base``.
-        ManifestError: If the manifest at ``base`` does not parse.
+        ManifestError: If a record at ``base`` does not parse.
     """
     root = Path(root)
     scanner = _Scanner(needles(overlay, location, public_manifest_at(root, base)))

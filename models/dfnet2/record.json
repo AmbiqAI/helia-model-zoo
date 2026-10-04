@@ -1,0 +1,67 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "dfnet2",
+  "title": "DFNet2",
+  "task": "speech-enhancement",
+  "domain": "audio",
+  "visibility": "public",
+  "license": {"spdx": null},
+  "card": "README.md",
+  "upstream": {"repo": "https://github.com/Rikorose/DeepFilterNet"},
+  "io": {
+    "streaming": "explicit_state",
+    "state_pairs": [
+      {"in": "state", "out": "Identity_4"}
+    ]
+  },
+  "precisions": {
+    "a16w8": {
+      "model": {
+        "path": "a16w8/model.tflite",
+        "sha256": "d7231b1e0da685102dc0230634956853106ef151b6f4521171a5e1c69c7204a7",
+        "bytes": 3022720
+      },
+      "inputs": [
+        {
+          "name": "feat_erb",
+          "shape": [1, 1, 1, 32],
+          "dtype": "int16",
+          "scale": 3.021484189957846e-05,
+          "zero_point": 0
+        },
+        {
+          "name": "feat_spec",
+          "shape": [1, 1, 1, 96, 2],
+          "dtype": "int16",
+          "scale": 1.9394292394281365e-05,
+          "zero_point": 0
+        },
+        {"name": "state", "shape": [1, 26304], "dtype": "int16", "scale": 7.69272301113233e-05, "zero_point": 0}
+      ],
+      "outputs": [
+        {"name": "Identity", "shape": [1, 1], "dtype": "int16", "scale": 3.0517578125e-05, "zero_point": 0},
+        {
+          "name": "Identity_1",
+          "shape": [1, 5, 1, 96, 2],
+          "dtype": "int16",
+          "scale": 6.038157516741194e-05,
+          "zero_point": 0
+        },
+        {"name": "Identity_2", "shape": [1, 1], "dtype": "int16", "scale": 0.000583362765610218, "zero_point": 0},
+        {"name": "Identity_3", "shape": [1, 1, 1, 32], "dtype": "int16", "scale": 3.0517578125e-05, "zero_point": 0},
+        {"name": "Identity_4", "shape": [1, 26304], "dtype": "int16", "scale": 7.69272301113233e-05, "zero_point": 0}
+      ],
+      "golden": {
+        "path": "a16w8/golden.npz",
+        "sha256": "a1a22179358a75573ee19edd363521fbbb06aa611b55246cc0541f240fe410dd",
+        "bytes": 109652,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": null,
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin_ref"
+      }
+    }
+  }
+}

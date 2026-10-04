@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ambiq AI
 # SPDX-License-Identifier: BSD-3-Clause
-"""Model artifacts, golden fixtures and their manifest for Ambiq's helia tools."""
+"""Model artifacts, golden fixtures and their records for Ambiq's helia tools."""
 
 from __future__ import annotations
 
@@ -9,19 +9,19 @@ from pathlib import Path
 
 from .manifest import (
     IO,
-    Entry,
     FileRef,
     Golden,
-    License,
     Manifest,
     ManifestError,
     Precision,
+    Record,
     StatePair,
     Tensor,
     Upstream,
     load_manifest,
     merge,
-    parse_manifest,
+    parse_record,
+    parse_records,
 )
 from .overlay import load_overlay, overlay_location
 
@@ -30,7 +30,7 @@ __version__ = "0.1.0"
 
 @cache
 def manifest() -> Manifest:
-    """The shipped manifest, plus the overlay that ``HELIA_ZOO_OVERLAY`` names, if any.
+    """The shipped records, plus the overlay that ``HELIA_ZOO_OVERLAY`` names, if any.
 
     The result is cached for the process; call ``manifest.cache_clear()`` after changing the variable.
     """
@@ -39,25 +39,22 @@ def manifest() -> Manifest:
     return packaged if location is None else merge(packaged, load_overlay(location))
 
 
-def entries() -> tuple[Entry, ...]:
-    """Every entry in :func:`manifest`."""
-    return manifest().entries
+def records() -> tuple[Record, ...]:
+    """Every record in :func:`manifest`."""
+    return manifest().records
 
 
-def get(model_id: str) -> Entry:
-    """The entry with this ID or alias."""
+def get(model_id: str) -> Record:
+    """The record with this ID."""
     return manifest().get(model_id)
 
 
 def fetch(model_id: str, precision: str | None = None, **options) -> Path:
-    """The verified local path of a model; an alias names its precision.
+    """The verified local path of a model.
 
     ``options`` go to :func:`helia_model_zoo.hydrate.fetch_file`.
     """
-    entry, aliased = manifest().resolve(model_id)
-    if precision is None and aliased is not None:
-        precision = aliased.name
-    return entry.fetch(precision, **options)
+    return get(model_id).fetch(precision, **options)
 
 
 def resolve(uri: str, **options) -> Path:
@@ -69,7 +66,7 @@ def resolve(uri: str, **options) -> Path:
 
 
 def revision() -> str | None:
-    """The repository commit this package's manifest describes (see ``hydrate.installed_revision``)."""
+    """The repository commit this package's records describe (see ``hydrate.installed_revision``)."""
     from .hydrate import installed_revision
 
     return installed_revision()
@@ -77,24 +74,24 @@ def revision() -> str | None:
 
 __all__ = [
     "IO",
-    "Entry",
     "FileRef",
     "Golden",
-    "License",
     "Manifest",
     "ManifestError",
     "Precision",
+    "Record",
     "StatePair",
     "Tensor",
     "Upstream",
-    "entries",
     "fetch",
     "get",
     "load_manifest",
     "load_overlay",
     "manifest",
     "merge",
-    "parse_manifest",
+    "parse_record",
+    "parse_records",
+    "records",
     "resolve",
     "revision",
 ]

@@ -1,0 +1,49 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "wav2letter",
+  "title": "Wav2Letter (pruned)",
+  "task": "speech-recognition",
+  "domain": "audio",
+  "visibility": "public",
+  "license": {"spdx": "Apache-2.0"},
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://github.com/ARM-software/ML-zoo",
+    "revision": "1a92aa08c0de49a7304e0a7f3f59df6f4fd33ac8",
+    "path": "models/speech_recognition/wav2letter/tflite_pruned_int8/wav2letter_pruned_int8.tflite",
+    "sha256": "e0814a0e586f2f2881f7fe96e6bc0b8e4cfecc8d64ced56d8f7ca85b9b7ab257"
+  },
+  "io": {"streaming": "stateless", "state_pairs": []},
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "e0814a0e586f2f2881f7fe96e6bc0b8e4cfecc8d64ced56d8f7ca85b9b7ab257",
+        "bytes": 23815520
+      },
+      "inputs": [
+        {
+          "name": "input_2_int8",
+          "shape": [1, 296, 39],
+          "dtype": "int8",
+          "scale": 0.13394859433174133,
+          "zero_point": -1
+        }
+      ],
+      "outputs": [
+        {"name": "Identity_int8", "shape": [1, 1, 148, 29], "dtype": "int8", "scale": 0.00390625, "zero_point": -128}
+      ],
+      "golden": {
+        "path": "a8w8/golden.npz",
+        "sha256": "10a6d2cf2d937dcd3103f3e8aefff4990a162c0f70a9814cf2dff913bfec3823",
+        "bytes": 16352,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": null,
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin_ref"
+      }
+    }
+  }
+}

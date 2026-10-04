@@ -26,7 +26,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check --no-deps -e .
       - name: Validate corpus manifest
         run: python tools/validate_corpus.py corpus-manifest-v1.json
-      - name: Validate manifest v2 (public entries only, exact golden replay, v1 aliases)
+      - name: Validate records (public only, exact golden replay, v1 agreement)
         run: helia-zoo validate --replay
       - name: Lint
         run: |

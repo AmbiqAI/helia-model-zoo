@@ -3,19 +3,20 @@
 import copy
 import json
 import os
-from importlib import resources
 from pathlib import Path
 
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 POINTER = b"version https://git-lfs.github.com/spec/v1"
-PACKAGED = json.loads(resources.files("helia_model_zoo").joinpath("manifest.json").read_text(encoding="utf-8"))
+PACKAGED = {
+    path.parent.name: json.loads(path.read_text(encoding="utf-8")) for path in REPO.glob("models/*/record.json")
+}
 
 
 @pytest.fixture
 def data():
-    """A mutable copy of the packaged manifest document."""
+    """Mutable copies of the repository's record documents, keyed by model ID."""
     return copy.deepcopy(PACKAGED)
 
 
@@ -27,7 +28,7 @@ def root():
     """
     required = os.environ.get("HELIA_ZOO_REQUIRE_ARTIFACTS") == "1"
     path = Path(os.environ.get("HELIA_ZOO_ROOT", REPO)).resolve()
-    model = path / "audio/rnnoise/model.tflite"
+    model = path / "models/rnnoise/a8w8/model.tflite"
     if not model.is_file() or model.read_bytes()[: len(POINTER)] == POINTER:
         (pytest.fail if required else pytest.skip)(f"no hydrated checkout at {path}")
     if required:
@@ -38,4 +39,4 @@ def root():
 
 
 def entry(data, model_id):
-    return next(e for e in data["entries"] if e["id"] == model_id)
+    return data[model_id]

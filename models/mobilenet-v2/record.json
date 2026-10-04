@@ -1,0 +1,55 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "mobilenet-v2",
+  "title": "MobileNet V2 1.0 224",
+  "task": "image-classification",
+  "domain": "vision",
+  "visibility": "public",
+  "license": {"spdx": "Apache-2.0"},
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://github.com/ARM-software/ML-zoo",
+    "revision": "fec0bb5bcd486eb2839cdb7d437d466067402a6a",
+    "path": "models/image_classification/mobilenet_v2_1.0_224/tflite_int8/mobilenet_v2_1.0_224_INT8.tflite",
+    "sha256": "bd8d56b80557a5fca7acf14f61e5339285c02810f7d7afa714b9763fc4b86e95"
+  },
+  "io": {"streaming": "stateless", "state_pairs": []},
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "bd8d56b80557a5fca7acf14f61e5339285c02810f7d7afa714b9763fc4b86e95",
+        "bytes": 4020936
+      },
+      "inputs": [
+        {
+          "name": "tfl.quantize",
+          "shape": [1, 224, 224, 3],
+          "dtype": "int8",
+          "scale": 0.007843137718737125,
+          "zero_point": -1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MobilenetV2/Predictions/Reshape_11",
+          "shape": [1, 1001],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        }
+      ],
+      "golden": {
+        "path": "a8w8/golden.npz",
+        "sha256": "6dc9a898f67c468e9d220873aa84bde332cdb9dbfe34b2bbcd9de7b738671047",
+        "bytes": 152045,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": null,
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin"
+      }
+    }
+  }
+}

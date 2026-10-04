@@ -1,0 +1,55 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "mlperf-tiny-resnet",
+  "title": "ResNet",
+  "task": "image-classification",
+  "domain": "vision",
+  "visibility": "public",
+  "license": {"spdx": "Apache-2.0"},
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://github.com/mlcommons/tiny",
+    "revision": "eb78d0ebaf2c812ce13668f017a22171a38cd051",
+    "path": "benchmark/training/image_classification/trained_models/pretrainedResnet_quant.tflite",
+    "sha256": "a65375297130b602a5b28523c20d9e24127cc36508c5f67586f02c01eb6299e6"
+  },
+  "io": {"streaming": "stateless", "state_pairs": []},
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "a65375297130b602a5b28523c20d9e24127cc36508c5f67586f02c01eb6299e6",
+        "bytes": 260648
+      },
+      "inputs": [
+        {
+          "name": "serving_default_input_1:0",
+          "shape": [1, 32, 32, 3],
+          "dtype": "int8",
+          "scale": 1.0,
+          "zero_point": -128
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall:0",
+          "shape": [1, 10],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        }
+      ],
+      "golden": {
+        "path": "a8w8/golden.npz",
+        "sha256": "0b4d28883e39bc93f2878cd24c1d92bdfa21293925036766131649bdfc15dd25",
+        "bytes": 3598,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": null,
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin"
+      }
+    }
+  }
+}

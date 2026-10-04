@@ -1,0 +1,43 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "mlperf-tiny-kws",
+  "title": "KWS Reference",
+  "task": "keyword-spotting",
+  "domain": "audio",
+  "visibility": "public",
+  "license": {"spdx": "Apache-2.0"},
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://github.com/mlcommons/tiny",
+    "revision": "4addd0fa08d216e20637637874e084895f289da4",
+    "path": "benchmark/training/keyword_spotting/trained_models/kws_ref_model.tflite",
+    "sha256": "aeea436800704fce17b17292e4412630ad856e9d777c044c64ef748a880bd0ae"
+  },
+  "io": {"streaming": "stateless", "state_pairs": []},
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "aeea436800704fce17b17292e4412630ad856e9d777c044c64ef748a880bd0ae",
+        "bytes": 53936
+      },
+      "inputs": [
+        {"name": "input_1", "shape": [1, 49, 10, 1], "dtype": "int8", "scale": 0.5847029089927673, "zero_point": 83}
+      ],
+      "outputs": [
+        {"name": "Identity", "shape": [1, 12], "dtype": "int8", "scale": 0.00390625, "zero_point": -128}
+      ],
+      "golden": {
+        "path": "a8w8/golden.npz",
+        "sha256": "434290baa67ce60cf6e7b0d3f5539acae92d3c0890d9f30636d16b3762402f13",
+        "bytes": 1018,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": null,
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin_ref"
+      }
+    }
+  }
+}
