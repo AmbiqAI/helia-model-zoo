@@ -357,6 +357,10 @@ def test_a_record_at_another_revision_comes_from_that_commit(monkeypatch, tmp_pa
     other = zoo.resolve(f"zoo://rnnoise@{COMMIT}", cache=tmp_path / "other")
     assert (tmp_path / "other/text/repo" / COMMIT / "models/rnnoise/record.json").is_file()
     assert other.model == tmp_path / "other" / SHA / "model.tflite"
+    assert zoo.fetch("rnnoise", revision=COMMIT, cache=tmp_path / "third") == tmp_path / "third" / SHA / "model.tflite"
+    assert (tmp_path / "third/text/repo" / COMMIT / "models/rnnoise/record.json").is_file()
+    with pytest.raises(TypeError, match="takes the revision in the reference"):
+        zoo.resolve("zoo://rnnoise/a8w8", revision=COMMIT)
 
 
 def test_an_explicit_revision_reads_only_hashed_files_from_an_explicit_checkout(monkeypatch, tmp_path):
@@ -372,8 +376,11 @@ def test_an_explicit_revision_reads_only_hashed_files_from_an_explicit_checkout(
     assert fetch_file(text, root=tmp_path / "repo", revision=COMMIT).read_bytes() == BODY and len(server.urls) == 2
 
 
-def test_a_private_record_resolves_only_at_its_overlay_revision(monkeypatch, tmp_path, data):
-    record = (_overlay(tmp_path, data) / "models/private-vad/record.json").read_bytes()
+@pytest.mark.parametrize("visibility", ["private", "public"])
+def test_a_private_record_resolves_only_at_its_overlay_revision(monkeypatch, tmp_path, data, visibility):
+    path = _overlay(tmp_path, data) / "models/private-vad/record.json"
+    path.write_text(json.dumps(dict(json.loads(path.read_text()), visibility=visibility)))
+    record = path.read_bytes()
     server = Server(monkeypatch, record)
     server.files = ["models/private-vad/record.json"]
     monkeypatch.setenv("HELIA_ZOO_OVERLAY", "hf://datasets/Example/index@" + "c" * 40)

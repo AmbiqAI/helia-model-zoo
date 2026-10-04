@@ -66,22 +66,21 @@ def get(model_id: str, revision: str | None = None, **options) -> Record:
             revision.
         ValueError: If ``revision`` is not a full 40-hex commit.
         helia_model_zoo.hydrate.FetchError: If the record cannot be downloaded at that revision.
-        ManifestError: If the record is not record@1.
+        ManifestError: If a record or the overlay is invalid.
     """
     if revision is None:
         return manifest().get(model_id)
     if not _REVISION.fullmatch(revision) or not _ID.fullmatch(model_id):
         raise ValueError(f"expected a model ID and a full 40-hex commit, got {model_id!r} at {revision!r}")
-    try:
-        installed = manifest().get(model_id)
-    except KeyError:
-        installed = None
-    if installed is not None and installed.visibility == "private":
+    in_overlay = any(r.id == model_id for r in manifest().records) and all(
+        r.id != model_id for r in load_manifest().records
+    )
+    if in_overlay:
         location = overlay_location()
-        pinned = hf_root(location).revision if location and location.startswith("hf://") else None
+        pinned = hf_root(location).revision if location.startswith("hf://") else None
         if pinned != revision:
             raise KeyError(f"{model_id} is private: set {OVERLAY_ENV} to its overlay dataset at {revision}")
-        return replace(installed, revision=revision)
+        return replace(manifest().get(model_id), revision=revision)
     from .hydrate import fetch_file
 
     path = fetch_file(FileRef(f"repo://{MODELS}/{model_id}/record.json"), **options, revision=revision)
@@ -130,8 +129,11 @@ class Resolved:
 def resolve(uri: str, **options) -> Resolved:
     """Resolve ``zoo://<id>[/<precision>][@<revision>]`` (see :func:`get`), fetching its model and golden.
 
-    Without a revision, the installed record is used. ``options`` go to :func:`helia_model_zoo.hydrate.fetch_file`.
+    Without a revision, the installed record is used. ``options`` go to :func:`helia_model_zoo.hydrate.fetch_file`;
+    a revision belongs in the reference.
     """
+    if "revision" in options:
+        raise TypeError("resolve() takes the revision in the reference: zoo://<id>[/<precision>]@<40-hex commit>")
     reference = parse_reference(uri)
     record = get(reference.id, reference.revision, **options)
     precision = record.precision(reference.precision)

@@ -166,8 +166,8 @@ def fetch_file(
 
     A repository file comes from ``root`` when hydrated there, else from GitHub at ``revision`` (default
     :func:`installed_revision`). A checkout cannot show its commit, so at an explicit ``revision`` ``root`` has no
-    default (:func:`local_checkout` otherwise) and supplies only files with a sha256. A cached copy is re-verified on every
-    call and replaced if it no longer matches. A download is verified before it is moved into
+    default (:func:`local_checkout` otherwise) and supplies only files with a sha256. A cached copy is re-verified
+    on every call and replaced if it no longer matches. A download is verified before it is moved into
     place, so the cache never holds an unverified file.
 
     Args:
