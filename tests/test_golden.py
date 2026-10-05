@@ -2,12 +2,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 import hashlib
 import json
-import subprocess
-import sys
 
 import numpy as np
 import pytest
-from conftest import REPO, entry
+from conftest import entry
 
 import helia_model_zoo as zoo
 from helia_model_zoo import golden
@@ -288,21 +286,6 @@ def test_cli_generate_and_check(root, tmp_path, capsys):
         == 1
     )
     assert "cannot be carried exactly" in capsys.readouterr().err
-
-
-def test_generator_shim_keeps_its_command_line(root, tmp_path):
-    out = tmp_path / "g.npz"
-    subprocess.run(
-        [sys.executable, str(REPO / "tools/generate_golden.py"), str(root / RNNOISE), str(out), "--seed", "3"],
-        check=True,
-        capture_output=True,
-    )
-    _, precision, _ = zoo.get("rnnoise"), zoo.get("rnnoise").precision(), None
-    expected = generate(root / RNNOISE, precision, IO("stateless", ()), seed=3)
-    with np.load(out) as written:
-        assert sorted(written.files) == sorted(expected) and all(
-            np.array_equal(written[k], expected[k]) for k in expected
-        )
 
 
 def test_tie_needs_the_zero_point_too(dfnet2):

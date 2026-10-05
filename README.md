@@ -14,16 +14,22 @@ models/<id>/
 ```
 
 The directory name is the model ID. Precisions are `fp32`, `fp16`, `a8w8`,
-`a16w8` and `a8w4`. There is no other inventory: `helia-zoo list` prints the
-models from the records. No record lists GTCRN (`audio/gtcrn/`) or the float
-MLPerf Tiny models that remain beside it under `audio/`, `vision/` and
-`anomaly-detection/`.
+`a16w8` and `a8w4`. There is no other inventory: `helia-zoo list --markdown`
+(or `--json`) prints one from the records. For each model it gives the task,
+source, licence, whether it is redistributable, its precisions, which of them
+have a golden, where its files are hosted, and its known gaps. Redistributable
+is `yes` for a public record with a licence (whose terms still apply),
+`unverified` for one without, and `private` for an overlay record.
+
+`helia-zoo validate` refuses any `fp32` or `fp16` model that holds int8, uint8
+or int16 tensors (a signature check, skipped with `--no-signatures`). On this
+repository's own records, it also refuses any tracked `.tflite` or `.npz` file
+that no record lists; `--root` must then be the top of a git checkout. A record
+with several precisions needs the precision named (`zoo://<id>/<precision>`).
 
 To contribute a model/golden pair for helia-aot release testing, follow
 [Add a model to the release corpus](docs/how-to/add-release-model.md). Adding an
 artifact here and enabling it in helia-aot are separate, reviewed changes.
-
-The template in `convert-yaml/convert.yaml` is a `heliaAOT` conversion template. It is included as a reference for adapting a zoo model into a `heliaAOT` conversion flow with a custom module output path or platform configuration.
 
 ## Golden fixtures
 
@@ -96,22 +102,15 @@ Future golden updates use the pinned LiteRT environment in
 python -m venv .golden-venv
 . .golden-venv/bin/activate
 python -m pip install -r tools/golden-requirements.txt
-python tools/generate_golden.py path/to/model.tflite path/to/golden.npz --seed 42
+python -m pip install --no-deps -e .
+helia-zoo golden generate path/to/model.tflite path/to/golden.npz --seed 42
 python tools/validate_corpus.py corpus-manifest-v1.json
 ```
 
-`tools/generate_golden.py` writes a `single` golden with LiteRT's reference
-kernels; `--resolver builtin` selects the optimized kernels instead. Two
-behaviours differ from earlier versions of the script:
-
-- Outputs come from the reference kernels by default. For some models (here,
-  KWS, RNNoise, Wav2Letter and MobileNet V2) they differ from the optimized
-  kernels' outputs. With `--resolver builtin`, the script reproduces the
-  earlier script's files.
-- A model with `state_in_k`/`state_out_k` state names gets its state inputs at
-  the reset value, not drawn from the seed. The other inputs' draws therefore
-  differ from the earlier script for the same seed. None of the current models
-  has such names.
+`helia-zoo golden generate` writes a `single` golden with LiteRT's reference
+kernels by default. For many models their outputs differ from the optimized
+kernels', which `--resolver builtin` selects. A model with `state_in_k`/`state_out_k` state
+names gets its state inputs at the reset value, not drawn from the seed.
 
 After intentionally changing a golden, update its record's digest. The review
 description must state the reference runtime/version, seed and any non-default
@@ -157,7 +156,8 @@ then resolves only at the revision the overlay is pinned to, and any other ID is
 looked up here. Without a commit, the installed record is used, so pin one
 wherever results must be reproducible.
 
-`helia-zoo list`, `show <id>`, `fetch <id> [--golden] [--card]` and `validate`
+`helia-zoo list [--json | --markdown]`, `show <id>`,
+`fetch <id> [--precision P] [--golden] [--card] [--root DIR]` and `validate`
 expose the same on the command line. Installing from Git with git-lfs present
 downloads every artifact in the repository; set `GIT_LFS_SKIP_SMUDGE=1` to skip
 them.

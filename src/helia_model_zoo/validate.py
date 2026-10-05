@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import json
 import math
+import os
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -16,6 +18,8 @@ from .hydrate import LFS_POINTER_PREFIX, FetchError, fetch_file, sha256_file
 from .manifest import FileRef, Manifest, Precision, Record, load_manifest
 
 __all__ = ["ValidationError", "sha256_file", "validate"]
+
+ARTIFACT_SUFFIXES = (".tflite", ".npz")
 
 
 class ValidationError(ValueError):
@@ -77,6 +81,12 @@ def _check_signature(precision: Precision, model: Path, where: str, problems: li
         for index, (have, want) in enumerate(zip(actual, declared, strict=True)):
             if have != want:
                 problems.append(f"{where}.{role}[{index}]: record {want} does not match the model {have}")
+    if precision.name in ("fp32", "fp16"):
+        integer = [
+            d for d in interpreter.get_tensor_details() if np.dtype(d["dtype"]).name in ("int8", "uint8", "int16")
+        ]
+        if integer:
+            problems.append(f"{where}: not a float model: {len(integer)} of its tensors are int8, uint8 or int16")
 
 
 def _check_state_pairs(record: Record, precision: Precision, where: str, problems: list[str]) -> None:
@@ -151,6 +161,7 @@ def validate(
     v1: Path | None = None,
     public: bool = True,
     cache: Path | None = None,
+    complete: bool = False,
 ) -> None:
     """Validate every record against a hydrated checkout.
 
@@ -167,6 +178,8 @@ def validate(
             is given.
         cache: Where to fetch files from outside this repository (default: a fresh directory when
             ``public``, else ``hydrate.cache_dir()``).
+        complete: ``manifest`` holds every record for ``root``, the top of a git checkout: refuse any tracked
+            ``.tflite`` or ``.npz`` file (in any letter case) that no record lists.
 
     Raises:
         ValidationError: Listing every problem found.
@@ -185,10 +198,42 @@ def validate(
     finally:
         if fresh is not None:
             fresh.cleanup()
+    if complete:
+        _check_unlisted(root, manifest, problems)
     if v1 is not None:
         _check_v1(manifest, v1, problems)
     if problems:
         raise ValidationError(problems)
+
+
+def _git(root: Path, *args: str) -> str:
+    """Run git in ``root``; ``GIT_*`` variables (set inside hooks) could point it at another repository."""
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    return subprocess.run(
+        ["git", "-C", str(root), *args],
+        capture_output=True,
+        check=True,
+        encoding="utf-8",
+        errors="surrogateescape",
+        env=environment,
+    ).stdout
+
+
+def _check_unlisted(root: Path, manifest: Manifest, problems: list[str]) -> None:
+    listed = {ref.path for record in manifest.records for ref in record.files() if ref.in_repository}
+    try:
+        top = Path(_git(root, "rev-parse", "--show-toplevel").strip()).resolve()
+        tracked = _git(root, "ls-files", "-z").split("\0")
+    except (OSError, subprocess.CalledProcessError) as error:
+        reason = getattr(error, "stderr", None) or error
+        problems.append(f"{root}: cannot list the tracked files of this git checkout: {str(reason).strip()}")
+        return
+    if top != root.resolve():
+        problems.append(f"{root}: not the top of its git checkout ({top})")
+        return
+    for path in tracked:
+        if path.lower().endswith(ARTIFACT_SUFFIXES) and path not in listed:
+            problems.append(f"{path}: no record lists this artifact")
 
 
 def _check_records(

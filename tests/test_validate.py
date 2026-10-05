@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 import hashlib
 import json
+import os
 import shutil
+import subprocess
 from importlib import metadata
 
 import numpy as np
@@ -338,3 +340,111 @@ def test_cli_without_litert_explains_the_extra(root, monkeypatch, capsys):
     assert main(["validate", "--root", str(root)]) == 2
     assert "install helia-model-zoo[litert]" in capsys.readouterr().err
     assert main(["validate", "--root", str(root), "--no-signatures"]) == 0
+
+
+def track(root, *paths):
+    """Make ``root`` a git checkout tracking ``paths`` (default: everything under it)."""
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=environment)
+    subprocess.run(["git", "-C", str(root), "add", "-A", "--", *(paths or ["."])], check=True, env=environment)
+
+
+def test_a_complete_check_refuses_tracked_unlisted_artifacts(root, tmp_path, data, monkeypatch):
+    data = copy_entry(root, tmp_path / "outer/inner", data, "rnnoise")
+    (tmp_path / "outer/README.md").write_text("outer")
+    track(tmp_path / "outer", "README.md")
+    assert problems_of(tmp_path / "outer/inner", data, signatures=False, complete=True) == [
+        f"{tmp_path / 'outer/inner'}: not the top of its git checkout ({tmp_path / 'outer'})"
+    ]
+    tmp_path = tmp_path / "outer/inner"
+    for stray in ("audio/x/MODEL.TFLITE", "models/rnnoise/extra.npz", "venv/lib/data.npz", "models/rnnoise/notes.txt"):
+        (tmp_path / stray).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / stray).write_bytes(b"x")
+    (tmp_path / "models/rnnoise/loop.tflite").symlink_to("loop.tflite")
+    track(tmp_path, "models", "audio")
+    validate(tmp_path, parse_records(data), signatures=False)
+    expected = [
+        "audio/x/MODEL.TFLITE: no record lists this artifact",
+        "models/rnnoise/extra.npz: no record lists this artifact",
+        "models/rnnoise/loop.tflite: no record lists this artifact",
+    ]
+    assert problems_of(tmp_path, data, signatures=False, complete=True) == expected
+    # Inside a git hook, GIT_DIR and GIT_INDEX_FILE name the hook's repository.
+    outer = tmp_path.parent
+    monkeypatch.setenv("GIT_DIR", str(outer / ".git"))
+    monkeypatch.setenv("GIT_INDEX_FILE", str(outer / ".git/index"))
+    assert problems_of(tmp_path, data, signatures=False, complete=True) == expected
+
+
+def test_cli_validate_refuses_unlisted_artifacts_in_its_root(root, tmp_path, data, capsys):
+    item = entry(copy_entry(root, tmp_path, data, "rnnoise"), "rnnoise")
+    (tmp_path / "models/rnnoise/record.json").write_text(json.dumps(item))
+    (tmp_path / "models/rnnoise/a8w8/untracked.tflite").write_bytes(b"x")
+    track(tmp_path, "models/rnnoise/record.json", "models/rnnoise/README.md", "models/rnnoise/a8w8/model.tflite")
+    command = ["validate", "--root", str(tmp_path), "--no-signatures", "--no-v1"]
+    assert main(command) == 0
+    track(tmp_path)
+    assert main(command) == 1
+    assert "models/rnnoise/a8w8/untracked.tflite: no record lists this artifact" in capsys.readouterr().err
+    assert main(["--models", str(tmp_path / "models"), *command]) == 0
+
+
+def test_cli_inventory(tmp_path, data, capsys):
+    assert main(["list", "--json"]) == 0
+    rows = {row["id"]: row for row in json.loads(capsys.readouterr().out)}
+    assert rows["dfnet2"] | {"title": None} == {
+        "id": "dfnet2",
+        "title": None,
+        "task": "speech-enhancement",
+        "domain": "audio",
+        "source": "https://github.com/Rikorose/DeepFilterNet",
+        "license": None,
+        "redistributable": "unverified",
+        "precisions": ["a16w8"],
+        "golden": ["a16w8"],
+        "hosting": ["git-lfs"],
+        "gaps": ["licence unknown", "source revision unknown"],
+    }
+    vww = rows["mlperf-tiny-vww"]
+    assert (vww["precisions"], vww["golden"], vww["redistributable"], vww["gaps"]) == (
+        ["fp32", "a8w8"],
+        ["fp32", "a8w8"],
+        "yes",
+        [],
+    )
+    assert vww["source"] == "https://github.com/mlcommons/tiny@4addd0fa08d216e20637637874e084895f289da4"
+    with pytest.raises(SystemExit):
+        main(["list", "--json", "--markdown"])
+    capsys.readouterr()
+
+    item = entry(data, "rnnoise")
+    item.update(task="de|noise\nfilter", license={"spdx": "NOASSERTION"})
+    wide = json.loads(json.dumps(item["precisions"]["a8w8"]))
+    wide["golden"]["uri"] = "hf://datasets/Example/goldens@" + "b" * 40 + "/fp32.npz"
+    del wide["golden"]["path"]
+    item["precisions"]["fp32"] = wide
+    precision = item["precisions"]["a8w8"]
+    precision.pop("golden")
+    precision["model"].pop("path")
+    precision["model"]["uri"] = "hf://Example/rnnoise@" + "a" * 40 + "/model.tflite"
+    secret = json.loads(json.dumps(entry(data, "mlperf-tiny-ad01")))
+    secret.update(id="secret", visibility="private")
+    for model_id, record in (("rnnoise", item), ("secret", secret)):
+        (tmp_path / "models" / model_id).mkdir(parents=True)
+        (tmp_path / "models" / model_id / "record.json").write_text(json.dumps(record))
+    assert main(["--models", str(tmp_path / "models"), "list", "--markdown"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == "| ID | Task | Source | Licence | Redistributable | Precisions | Golden | Hosting | Gaps |"
+    assert lines[2:] == [
+        "| rnnoise | de\\|noise filter | ARM-software/ML-zoo@fec0bb5b | NOASSERTION | unverified | fp32, a8w8 | fp32 "
+        "| git-lfs, hf:Example/rnnoise, hf:datasets/Example/goldens | licence unknown, no a8w8 golden |",
+        "| secret | anomaly-detection | mlcommons/tiny@4addd0fa | Apache-2.0 | private | fp32, a8w8 | fp32, a8w8 "
+        "| git-lfs | - |",
+    ]
+
+
+def test_a_float_precision_must_hold_a_float_model(root, data):
+    item = entry(data, "rnnoise")
+    item["precisions"]["fp32"] = item["precisions"].pop("a8w8")
+    problems = problems_of(root, only(data, "rnnoise"), replay=True)
+    assert "record rnnoise.precisions.fp32: not a float model: 94 of its tensors are int8, uint8 or int16" in problems

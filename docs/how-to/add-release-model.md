@@ -62,7 +62,8 @@ helia-aot. For the standard deterministic generator:
 python -m venv .golden-venv
 . .golden-venv/bin/activate
 python -m pip install -r tools/golden-requirements.txt
-python tools/generate_golden.py path/to/model.tflite path/to/golden.npz --seed 42
+python -m pip install --no-deps -e .
+helia-zoo golden generate path/to/model.tflite path/to/golden.npz --seed 42
 ```
 
 The NPZ must contain consecutive `input_N` and `output_N` arrays whose shapes
@@ -147,8 +148,10 @@ helia-zoo validate --replay
 Validation rejects unresolved LFS pointers, path escapes, missing artifacts,
 digest mismatches, duplicate IDs, missing or unexpected NPZ keys,
 signature-incompatible shapes or dtypes, declared tensors that differ from the
-model, goldens that do not replay exactly, and v1 entries that disagree with
-the records.
+model, `fp32` or `fp16` models holding int8, uint8 or int16 tensors, goldens
+that do not replay exactly, v1 entries that disagree with the records, and
+tracked `.tflite` or `.npz` files that no record lists. Run it from the top of
+the git checkout.
 
 If an existing golden changes, summarize representative and maximum numerical
 differences in the pull request and obtain approval from the model/corpus

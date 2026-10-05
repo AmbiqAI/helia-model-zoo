@@ -11,7 +11,7 @@ import re
 import sys
 from pathlib import Path
 
-from .manifest import ManifestError, load_manifest
+from .manifest import PRECISIONS, ManifestError, Record, load_manifest, parse_hf
 
 
 def _manifest(args: argparse.Namespace):
@@ -23,9 +23,78 @@ def _manifest(args: argparse.Namespace):
     return manifest()
 
 
+def inventory_row(record: Record) -> dict:
+    """One model's inventory facts, all derived from its record."""
+    upstream = record.upstream
+    precisions = sorted(record.precisions, key=PRECISIONS.index)
+    golden = [name for name in precisions if record.precisions[name].golden is not None]
+    files = [ref for p in record.precisions.values() for ref in (p.model, *([p.golden.file] if p.golden else []))]
+    licensed = record.spdx not in (None, "NOASSERTION", "NONE")
+    gaps = [] if licensed else ["licence unknown"]
+    if upstream is None or upstream.revision is None:
+        gaps.append("source revision unknown")
+    gaps += [f"no {name} golden" for name in precisions if name not in golden]
+    return {
+        "id": record.id,
+        "title": record.title,
+        "task": record.task,
+        "domain": record.domain,
+        "source": None if upstream is None else "@".join(filter(None, (upstream.repo, upstream.revision))),
+        "license": record.spdx,
+        "redistributable": "private" if record.visibility == "private" else "yes" if licensed else "unverified",
+        "precisions": precisions,
+        "golden": golden,
+        "hosting": sorted({"git-lfs" if ref.in_repository else _hf_repo(ref.uri) for ref in files}),
+        "gaps": gaps,
+    }
+
+
+def _hf_repo(uri: str) -> str:
+    location = parse_hf(uri)
+    kind = "" if location.repo_type == "model" else f"{location.repo_type}s/"
+    return f"hf:{kind}{location.repo_id}"
+
+
+def _cell(value) -> str:
+    if value is None or value == []:
+        return "-"
+    text = ", ".join(value) if isinstance(value, list) else str(value)
+    return " ".join(text.split()).replace("|", "\\|")
+
+
+def _source(value: str | None) -> str | None:
+    """A GitHub source as ``<org>/<repo>@<short revision>``."""
+    if value is None:
+        return None
+    return re.sub(r"@([0-9a-f]{8})[0-9a-f]{32}$", r"@\1", value.removeprefix("https://github.com/"))
+
+
+_COLUMNS = (
+    ("ID", "id"),
+    ("Task", "task"),
+    ("Source", "source"),
+    ("Licence", "license"),
+    ("Redistributable", "redistributable"),
+    ("Precisions", "precisions"),
+    ("Golden", "golden"),
+    ("Hosting", "hosting"),
+    ("Gaps", "gaps"),
+)
+
+
 def _list(args: argparse.Namespace) -> int:
-    for record in _manifest(args).records:
-        print(f"{record.id}\t{','.join(record.precisions)}\t{record.task}\t{record.visibility}\t{record.title}")
+    records = _manifest(args).records
+    if args.json:
+        print(json.dumps([inventory_row(r) for r in records], indent=2))
+    elif args.markdown:
+        print("| " + " | ".join(title for title, _ in _COLUMNS) + " |")
+        print("|" + "---|" * len(_COLUMNS))
+        for row in map(inventory_row, records):
+            row["source"] = _source(row["source"])
+            print("| " + " | ".join(_cell(row[key]) for _, key in _COLUMNS) + " |")
+    else:
+        for record in records:
+            print(f"{record.id}\t{','.join(record.precisions)}\t{record.task}\t{record.visibility}\t{record.title}")
     return 0
 
 
@@ -52,7 +121,9 @@ def _validate(args: argparse.Namespace) -> int:
         return 2
     try:
         records = load_manifest(args.models or root / "models")
-        validate(root, records, signatures=not args.no_signatures, replay=args.replay, v1=v1)
+        validate(
+            root, records, signatures=not args.no_signatures, replay=args.replay, v1=v1, complete=args.models is None
+        )
     except (ImportError, ManifestError) as error:
         print(error, file=sys.stderr)
         return 2
@@ -239,12 +310,25 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="helia-zoo", description=__doc__)
     parser.add_argument("--models", type=Path, help="a models directory of records (default: the packaged records)")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("list", help="list the records").set_defaults(run=_list)
+    listing = commands.add_parser("list", help="list the records, or print the model inventory")
+    formats = listing.add_mutually_exclusive_group()
+    formats.add_argument("--json", action="store_true", help="the inventory as JSON")
+    formats.add_argument("--markdown", action="store_true", help="the inventory as a Markdown table")
+    listing.set_defaults(run=_list)
     show = commands.add_parser("show", help="print one record as JSON")
     show.add_argument("id", help="model ID")
     show.set_defaults(run=_show)
-    check = commands.add_parser("validate", help="validate the records against a hydrated checkout")
-    check.add_argument("--root", default=".", help="repository checkout with Git LFS hydrated (default: .)")
+    check = commands.add_parser(
+        "validate",
+        help="validate the records against a hydrated checkout",
+        description="Validate the records against a hydrated checkout. Unless the top-level --models option names "
+        "other records, also refuse any tracked .tflite or .npz file that no record lists.",
+    )
+    check.add_argument(
+        "--root",
+        default=".",
+        help="repository checkout with Git LFS hydrated, at the top of its git checkout (default: .)",
+    )
     check.add_argument(
         "--replay", action="store_true", help="require each golden to replay exactly; needs the recorded LiteRT version"
     )

@@ -15,6 +15,30 @@
   },
   "io": {"streaming": "stateless", "state_pairs": []},
   "precisions": {
+    "fp32": {
+      "model": {
+        "path": "fp32/model.tflite",
+        "sha256": "1e6098552602c0bc952d0ec3afba98ff4853e0fcf73d00c378183e3194719677",
+        "bytes": 951964
+      },
+      "inputs": [
+        {"name": "serving_default_input_1:0", "shape": [1, 32, 32, 3], "dtype": "float32", "scale": null, "zero_point": null}
+      ],
+      "outputs": [
+        {"name": "StatefulPartitionedCall:0", "shape": [1, 10], "dtype": "float32", "scale": null, "zero_point": null}
+      ],
+      "golden": {
+        "path": "fp32/golden.npz",
+        "sha256": "fc78e38f8fd35b91e7661a32ca157670e3de83fb791afddf58b5ddec990dddfb",
+        "bytes": 12844,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": {"seed": 42},
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin_ref"
+      }
+    },
     "a8w8": {
       "model": {
         "path": "a8w8/model.tflite",
