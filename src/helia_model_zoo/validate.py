@@ -81,6 +81,9 @@ def _check_signature(precision: Precision, model: Path, where: str, problems: li
         for index, (have, want) in enumerate(zip(actual, declared, strict=True)):
             if have != want:
                 problems.append(f"{where}.{role}[{index}]: record {want} does not match the model {have}")
+    half = [d for d in interpreter.get_tensor_details() if np.dtype(d["dtype"]).name == "float16"]
+    if half and precision.name != "fp16":
+        problems.append(f"{where}: {len(half)} of its tensors are float16; only an fp16 precision holds float16")
     if precision.name == "fp16":
         wide = [d for d in interpreter.get_tensor_details() if np.dtype(d["dtype"]).name in ("float32", "float64")]
         if wide:

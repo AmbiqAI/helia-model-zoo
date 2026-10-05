@@ -33,7 +33,7 @@ def inventory_row(record: Record) -> dict:
     gaps = [] if licensed else ["licence unknown"]
     if upstream is None or upstream.revision is None:
         gaps.append("source revision unknown")
-    gaps += [f"no {name} golden" for name in precisions if name not in golden]
+    gaps += [f"no {name} golden" for name in precisions if name not in golden and name != "fp16"]
     return {
         "id": record.id,
         "title": record.title,

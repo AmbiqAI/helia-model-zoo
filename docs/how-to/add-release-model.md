@@ -17,7 +17,7 @@ models/<id>/
   record.json
   README.md
   <precision>/model.tflite
-  <precision>/golden.npz
+  <precision>/golden.npz      (every precision except fp16)
 ```
 
 Precisions are `fp32`, `fp16`, `a8w8`, `a16w8` and `a8w4`.

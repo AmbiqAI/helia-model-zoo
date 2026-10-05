@@ -410,7 +410,7 @@ def test_cli_inventory(tmp_path, data, capsys):
         ["fp32", "fp16", "a8w8"],
         ["fp32", "a8w8"],
         "yes",
-        ["no fp16 golden"],
+        [],
     )
     assert vww["source"] == "https://github.com/mlcommons/tiny@4addd0fa08d216e20637637874e084895f289da4"
     with pytest.raises(SystemExit):
@@ -439,7 +439,7 @@ def test_cli_inventory(tmp_path, data, capsys):
         "| rnnoise | de\\|noise filter | ARM-software/ML-zoo@fec0bb5b | NOASSERTION | unverified | fp32, a8w8 | fp32 "
         "| git-lfs, hf:Example/rnnoise, hf:datasets/Example/goldens | licence unknown, no a8w8 golden |",
         "| secret | anomaly-detection | mlcommons/tiny@4addd0fa | Apache-2.0 | private | fp32, fp16, a8w8 "
-        "| fp32, a8w8 | git-lfs | no fp16 golden |",
+        "| fp32, a8w8 | git-lfs | - |",
     ]
 
 
@@ -473,3 +473,25 @@ def test_an_fp16_precision_has_no_golden(root, tmp_path, data, capsys):
         np.savez(tmp_path / "g.npz", **{k: arrays[k].astype(np.float16) for k in arrays.files})
     assert main(["golden", "check", str(model), str(tmp_path / "g.npz")]) == 2
     assert f"LiteRT cannot run {model}" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("precision", ["fp32", "a16w8"])
+def test_only_an_fp16_precision_holds_float16(root, tmp_path, data, precision):
+    item = entry(data, "mlperf-tiny-kws")
+    float16 = json.loads(json.dumps(item["precisions"]["fp16"]))
+    with np.load(root / "models/mlperf-tiny-kws/fp32/golden.npz") as arrays:
+        np.savez(tmp_path / "g.npz", **{k: arrays[k].astype(np.float16) for k in arrays.files})
+    float16["golden"] = dict(item["precisions"]["fp32"]["golden"], path="fp16/g.npz")
+    float16["golden"].update(
+        sha256=hashlib.sha256((tmp_path / "g.npz").read_bytes()).hexdigest(), bytes=(tmp_path / "g.npz").stat().st_size
+    )
+    item["precisions"] = {precision: float16}
+    model_dir = tmp_path / "models/mlperf-tiny-kws"
+    (model_dir / "fp16").mkdir(parents=True)
+    shutil.copyfile(root / "models/mlperf-tiny-kws/README.md", model_dir / "README.md")
+    shutil.copyfile(root / "models/mlperf-tiny-kws/fp16/model.tflite", model_dir / "fp16/model.tflite")
+    shutil.copyfile(tmp_path / "g.npz", model_dir / "fp16/g.npz")
+    problems = problems_of(tmp_path, only(data, "mlperf-tiny-kws"), replay=True)
+    assert problems == [
+        f"record mlperf-tiny-kws.precisions.{precision}: 33 of its tensors are float16; only an fp16 precision holds float16"
+    ]
