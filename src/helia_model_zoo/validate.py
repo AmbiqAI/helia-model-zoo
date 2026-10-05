@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -85,7 +86,7 @@ def _check_signature(precision: Precision, model: Path, where: str, problems: li
             d for d in interpreter.get_tensor_details() if np.dtype(d["dtype"]).name in ("int8", "uint8", "int16")
         ]
         if integer:
-            problems.append(f"{where}: {len(integer)} tensors are int8, uint8 or int16; this is not a float model")
+            problems.append(f"{where}: not a float model: {len(integer)} of its tensors are int8, uint8 or int16")
 
 
 def _check_state_pairs(record: Record, precision: Precision, where: str, problems: list[str]) -> None:
@@ -177,8 +178,8 @@ def validate(
             is given.
         cache: Where to fetch files from outside this repository (default: a fresh directory when
             ``public``, else ``hydrate.cache_dir()``).
-        complete: ``manifest`` holds every record for ``root``, a git checkout: refuse any tracked ``.tflite``
-            or ``.npz`` file (in any letter case) that no record lists.
+        complete: ``manifest`` holds every record for ``root``, the top of a git checkout: refuse any tracked
+            ``.tflite`` or ``.npz`` file (in any letter case) that no record lists.
 
     Raises:
         ValidationError: Listing every problem found.
@@ -205,14 +206,30 @@ def validate(
         raise ValidationError(problems)
 
 
+def _git(root: Path, *args: str) -> str:
+    """Run git in ``root``; ``GIT_*`` variables (set inside hooks) could point it at another repository."""
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    return subprocess.run(
+        ["git", "-C", str(root), *args],
+        capture_output=True,
+        check=True,
+        encoding="utf-8",
+        errors="surrogateescape",
+        env=environment,
+    ).stdout
+
+
 def _check_unlisted(root: Path, manifest: Manifest, problems: list[str]) -> None:
     listed = {ref.path for record in manifest.records for ref in record.files() if ref.in_repository}
     try:
-        tracked = subprocess.run(
-            ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True, text=True
-        ).stdout.split("\0")
+        top = Path(_git(root, "rev-parse", "--show-toplevel").strip()).resolve()
+        tracked = _git(root, "ls-files", "-z").split("\0")
     except (OSError, subprocess.CalledProcessError) as error:
-        problems.append(f"{root}: cannot list the tracked files of this git checkout: {error}")
+        reason = getattr(error, "stderr", None) or error
+        problems.append(f"{root}: cannot list the tracked files of this git checkout: {str(reason).strip()}")
+        return
+    if top != root.resolve():
+        problems.append(f"{root}: not the top of its git checkout ({top})")
         return
     for path in tracked:
         if path.lower().endswith(ARTIFACT_SUFFIXES) and path not in listed:

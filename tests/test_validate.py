@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 from importlib import metadata
@@ -343,26 +344,36 @@ def test_cli_without_litert_explains_the_extra(root, monkeypatch, capsys):
 
 def track(root, *paths):
     """Make ``root`` a git checkout tracking ``paths`` (default: everything under it)."""
-    subprocess.run(["git", "init", "-q", str(root)], check=True)
-    subprocess.run(["git", "-C", str(root), "add", "-A", "--", *(paths or ["."])], check=True)
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    subprocess.run(["git", "init", "-q", str(root)], check=True, env=environment)
+    subprocess.run(["git", "-C", str(root), "add", "-A", "--", *(paths or ["."])], check=True, env=environment)
 
 
-def test_a_complete_check_refuses_tracked_unlisted_artifacts(root, tmp_path, data):
-    data = copy_entry(root, tmp_path, data, "rnnoise")
-    assert problems_of(tmp_path, data, signatures=False, complete=True)[0].startswith(
-        f"{tmp_path}: cannot list the tracked files of this git checkout"
-    )
+def test_a_complete_check_refuses_tracked_unlisted_artifacts(root, tmp_path, data, monkeypatch):
+    data = copy_entry(root, tmp_path / "outer/inner", data, "rnnoise")
+    (tmp_path / "outer/README.md").write_text("outer")
+    track(tmp_path / "outer", "README.md")
+    assert problems_of(tmp_path / "outer/inner", data, signatures=False, complete=True) == [
+        f"{tmp_path / 'outer/inner'}: not the top of its git checkout ({tmp_path / 'outer'})"
+    ]
+    tmp_path = tmp_path / "outer/inner"
     for stray in ("audio/x/MODEL.TFLITE", "models/rnnoise/extra.npz", "venv/lib/data.npz", "models/rnnoise/notes.txt"):
         (tmp_path / stray).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / stray).write_bytes(b"x")
     (tmp_path / "models/rnnoise/loop.tflite").symlink_to("loop.tflite")
     track(tmp_path, "models", "audio")
     validate(tmp_path, parse_records(data), signatures=False)
-    assert problems_of(tmp_path, data, signatures=False, complete=True) == [
+    expected = [
         "audio/x/MODEL.TFLITE: no record lists this artifact",
         "models/rnnoise/extra.npz: no record lists this artifact",
         "models/rnnoise/loop.tflite: no record lists this artifact",
     ]
+    assert problems_of(tmp_path, data, signatures=False, complete=True) == expected
+    # Inside a git hook, GIT_DIR and GIT_INDEX_FILE name the hook's repository.
+    outer = tmp_path.parent
+    monkeypatch.setenv("GIT_DIR", str(outer / ".git"))
+    monkeypatch.setenv("GIT_INDEX_FILE", str(outer / ".git/index"))
+    assert problems_of(tmp_path, data, signatures=False, complete=True) == expected
 
 
 def test_cli_validate_refuses_unlisted_artifacts_in_its_root(root, tmp_path, data, capsys):
@@ -436,4 +447,4 @@ def test_a_float_precision_must_hold_a_float_model(root, data):
     item = entry(data, "rnnoise")
     item["precisions"]["fp32"] = item["precisions"].pop("a8w8")
     problems = problems_of(root, only(data, "rnnoise"), replay=True)
-    assert "record rnnoise.precisions.fp32: 94 tensors are int8, uint8 or int16; this is not a float model" in problems
+    assert "record rnnoise.precisions.fp32: not a float model: 94 of its tensors are int8, uint8 or int16" in problems
