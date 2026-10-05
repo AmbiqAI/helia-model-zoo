@@ -1,7 +1,7 @@
 {
   "schema": "helia-model-zoo/record@1",
-  "id": "mlperf-tiny-resnet",
-  "title": "ResNet",
+  "id": "mlperf-tiny-resnet-wide",
+  "title": "ResNet, wide variant (26/52/104)",
   "task": "image-classification",
   "domain": "vision",
   "visibility": "public",

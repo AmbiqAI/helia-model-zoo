@@ -33,7 +33,7 @@ def inventory_row(record: Record) -> dict:
     gaps = [] if licensed else ["licence unknown"]
     if upstream is None or upstream.revision is None:
         gaps.append("source revision unknown")
-    gaps += [f"no {name} golden" for name in precisions if name not in golden]
+    gaps += [f"no {name} golden" for name in precisions if name not in golden and name != "fp16"]
     return {
         "id": record.id,
         "title": record.title,
@@ -257,6 +257,9 @@ def _golden_generate(args: argparse.Namespace) -> int:
     except (KeyError, ValueError, OSError) as error:
         print(error.args[0] if isinstance(error, KeyError) else error, file=sys.stderr)
         return 1
+    except RuntimeError as error:  # LiteRT cannot prepare or run the graph, e.g. a native float16 model
+        print(f"LiteRT cannot run {args.model}: {error}", file=sys.stderr)
+        return 1
     golden.write(args.out, arrays)
     if args.print_record:
         source = {"uri": args.source_uri, "sha256": args.source_sha256} if args.data else {"seed": args.seed}
@@ -297,6 +300,9 @@ def _golden_check(args: argparse.Namespace) -> int:
         )
     except (OSError, ValueError) as error:
         print(error, file=sys.stderr)
+        return 2
+    except RuntimeError as error:  # LiteRT cannot prepare or run the graph, e.g. a native float16 model
+        print(f"LiteRT cannot run {args.model}: {error}", file=sys.stderr)
         return 2
     for problem in problems:
         print(problem, file=sys.stderr)

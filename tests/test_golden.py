@@ -571,7 +571,7 @@ class FakeInterpreter:
 def fake(monkeypatch):
     from helia_model_zoo import runtime
 
-    monkeypatch.setattr(runtime, "interpreter", lambda model, resolver=None: FakeInterpreter())
+    monkeypatch.setattr(runtime, "interpreter", lambda model, resolver=None, allocate=True: FakeInterpreter())
     inputs, outputs = runtime.model_tensors("fake.tflite")
     return inputs, outputs
 

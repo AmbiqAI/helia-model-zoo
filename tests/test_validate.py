@@ -33,7 +33,7 @@ def copy_entry(root, tmp_path, data, model_id):
     item = entry(data, model_id)
     paths = [item["card"]]
     for precision in item["precisions"].values():
-        paths += [precision["model"]["path"], precision["golden"]["path"]]
+        paths += [precision["model"]["path"]] + ([precision["golden"]["path"]] if "golden" in precision else [])
     for path in paths:
         relative = f"models/{model_id}/{path}"
         (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
@@ -96,7 +96,7 @@ def test_declared_tensor_must_match_the_model(root, data):
     assert any(p.startswith("record rnnoise.precisions.a8w8.inputs[1]: record") for p in problems)
 
 
-@pytest.mark.parametrize(("model_id", "resolver"), [("mlperf-tiny-resnet", "builtin"), ("rnnoise", "builtin")])
+@pytest.mark.parametrize(("model_id", "resolver"), [("mlperf-tiny-resnet-wide", "builtin"), ("rnnoise", "builtin")])
 def test_replay_under_the_wrong_resolver_is_refused(root, data, model_id, resolver):
     entry(data, model_id)["precisions"]["a8w8"]["golden"]["resolver"] = resolver
     only(data, model_id)
@@ -407,7 +407,7 @@ def test_cli_inventory(tmp_path, data, capsys):
     }
     vww = rows["mlperf-tiny-vww"]
     assert (vww["precisions"], vww["golden"], vww["redistributable"], vww["gaps"]) == (
-        ["fp32", "a8w8"],
+        ["fp32", "fp16", "a8w8"],
         ["fp32", "a8w8"],
         "yes",
         [],
@@ -438,8 +438,8 @@ def test_cli_inventory(tmp_path, data, capsys):
     assert lines[2:] == [
         "| rnnoise | de\\|noise filter | ARM-software/ML-zoo@fec0bb5b | NOASSERTION | unverified | fp32, a8w8 | fp32 "
         "| git-lfs, hf:Example/rnnoise, hf:datasets/Example/goldens | licence unknown, no a8w8 golden |",
-        "| secret | anomaly-detection | mlcommons/tiny@4addd0fa | Apache-2.0 | private | fp32, a8w8 | fp32, a8w8 "
-        "| git-lfs | - |",
+        "| secret | anomaly-detection | mlcommons/tiny@4addd0fa | Apache-2.0 | private | fp32, fp16, a8w8 "
+        "| fp32, a8w8 | git-lfs | - |",
     ]
 
 
@@ -448,3 +448,50 @@ def test_a_float_precision_must_hold_a_float_model(root, data):
     item["precisions"]["fp32"] = item["precisions"].pop("a8w8")
     problems = problems_of(root, only(data, "rnnoise"), replay=True)
     assert "record rnnoise.precisions.fp32: not a float model: 94 of its tensors are int8, uint8 or int16" in problems
+
+
+def test_an_fp16_precision_must_hold_a_native_float16_model(root, data):
+    item = entry(data, "mlperf-tiny-kws")
+    item["precisions"]["fp16"] = item["precisions"].pop("fp32")
+    problems = problems_of(root, only(data, "mlperf-tiny-kws"), signatures=True)
+    assert any("precisions.fp16: not a native float16 model:" in p for p in problems)
+
+
+def test_golden_generate_explains_a_model_litert_cannot_run(root, tmp_path, capsys):
+    model = root / "models/mlperf-tiny-kws/fp16/model.tflite"
+    assert main(["golden", "generate", str(model), str(tmp_path / "g.npz")]) == 1
+    assert f"LiteRT cannot run {model}" in capsys.readouterr().err
+
+
+def test_an_fp16_precision_has_no_golden(root, tmp_path, data, capsys):
+    item = entry(data, "mlperf-tiny-kws")
+    item["precisions"]["fp16"]["golden"] = item["precisions"]["fp32"]["golden"]
+    problems = problems_of(root, only(data, "mlperf-tiny-kws"), signatures=True, replay=True)
+    assert any("precisions.fp16.golden: LiteRT has no float16 kernels" in p for p in problems)
+    model = root / "models/mlperf-tiny-kws/fp16/model.tflite"
+    with np.load(root / "models/mlperf-tiny-kws/fp32/golden.npz") as arrays:
+        np.savez(tmp_path / "g.npz", **{k: arrays[k].astype(np.float16) for k in arrays.files})
+    assert main(["golden", "check", str(model), str(tmp_path / "g.npz")]) == 2
+    assert f"LiteRT cannot run {model}" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("precision", ["fp32", "a16w8"])
+def test_only_an_fp16_precision_holds_float16(root, tmp_path, data, precision):
+    item = entry(data, "mlperf-tiny-kws")
+    float16 = json.loads(json.dumps(item["precisions"]["fp16"]))
+    with np.load(root / "models/mlperf-tiny-kws/fp32/golden.npz") as arrays:
+        np.savez(tmp_path / "g.npz", **{k: arrays[k].astype(np.float16) for k in arrays.files})
+    float16["golden"] = dict(item["precisions"]["fp32"]["golden"], path="fp16/g.npz")
+    float16["golden"].update(
+        sha256=hashlib.sha256((tmp_path / "g.npz").read_bytes()).hexdigest(), bytes=(tmp_path / "g.npz").stat().st_size
+    )
+    item["precisions"] = {precision: float16}
+    model_dir = tmp_path / "models/mlperf-tiny-kws"
+    (model_dir / "fp16").mkdir(parents=True)
+    shutil.copyfile(root / "models/mlperf-tiny-kws/README.md", model_dir / "README.md")
+    shutil.copyfile(root / "models/mlperf-tiny-kws/fp16/model.tflite", model_dir / "fp16/model.tflite")
+    shutil.copyfile(tmp_path / "g.npz", model_dir / "fp16/g.npz")
+    problems = problems_of(tmp_path, only(data, "mlperf-tiny-kws"), replay=True)
+    assert problems == [
+        f"record mlperf-tiny-kws.precisions.{precision}: 33 of its tensors are float16; only an fp16 precision holds float16"
+    ]

@@ -69,7 +69,7 @@ def _check_file(
 
 
 def _check_signature(precision: Precision, model: Path, where: str, problems: list[str]) -> None:
-    interpreter = runtime.interpreter(model)
+    interpreter = runtime.interpreter(model, allocate=False)
     for role, details, declared in (
         ("inputs", interpreter.get_input_details(), precision.inputs),
         ("outputs", interpreter.get_output_details(), precision.outputs),
@@ -81,6 +81,13 @@ def _check_signature(precision: Precision, model: Path, where: str, problems: li
         for index, (have, want) in enumerate(zip(actual, declared, strict=True)):
             if have != want:
                 problems.append(f"{where}.{role}[{index}]: record {want} does not match the model {have}")
+    half = [d for d in interpreter.get_tensor_details() if np.dtype(d["dtype"]).name == "float16"]
+    if half and precision.name != "fp16":
+        problems.append(f"{where}: {len(half)} of its tensors are float16; only an fp16 precision holds float16")
+    if precision.name == "fp16":
+        wide = [d for d in interpreter.get_tensor_details() if np.dtype(d["dtype"]).name in ("float32", "float64")]
+        if wide:
+            problems.append(f"{where}: not a native float16 model: {len(wide)} of its tensors are float32 or float64")
     if precision.name in ("fp32", "fp16"):
         integer = [
             d for d in interpreter.get_tensor_details() if np.dtype(d["dtype"]).name in ("int8", "uint8", "int16")
@@ -261,6 +268,11 @@ def _check_records(
                 if len(problems) > before:
                     model = None
             if precision.golden is None:
+                continue
+            if precision.name == "fp16":
+                problems.append(
+                    f"{pwhere}.golden: LiteRT has no float16 kernels to replay it; give an fp16 precision no golden"
+                )
                 continue
             golden_file = _check_file(root, precision.golden.file, f"{pwhere}.golden", problems, cache, public)
             if golden_file is not None:

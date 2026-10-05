@@ -68,15 +68,15 @@
       "license_reference": "models/wav2letter/README.md"
     },
     {
-      "id": "mlperf-tiny-resnet-int8",
-      "model": "models/mlperf-tiny-resnet/a8w8/model.tflite",
+      "id": "mlperf-tiny-resnet-wide-int8",
+      "model": "models/mlperf-tiny-resnet-wide/a8w8/model.tflite",
       "model_sha256": "a65375297130b602a5b28523c20d9e24127cc36508c5f67586f02c01eb6299e6",
-      "golden": "models/mlperf-tiny-resnet/a8w8/golden.npz",
+      "golden": "models/mlperf-tiny-resnet-wide/a8w8/golden.npz",
       "golden_sha256": "26e7663608db1b1f935d0ec077de0cd5188434015413dbb6fcc498027b9975ee",
       "reference_runtime": "ai-edge-litert",
       "reference_runtime_version": "2.1.2",
-      "provenance_reference": "models/mlperf-tiny-resnet/README.md",
-      "license_reference": "models/mlperf-tiny-resnet/README.md"
+      "provenance_reference": "models/mlperf-tiny-resnet-wide/README.md",
+      "license_reference": "models/mlperf-tiny-resnet-wide/README.md"
     },
     {
       "id": "mlperf-tiny-vww-int8",

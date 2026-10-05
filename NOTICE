@@ -16,11 +16,12 @@ Third-party models
 
 MLPerf Tiny (https://github.com/mlcommons/tiny), Apache License 2.0
 (licenses/Apache-2.0.txt):
-  - models/mlperf-tiny-ad01                 (ad01_int8.tflite, ad01_fp32.tflite)
-  - models/mlperf-tiny-kws                  (kws_ref_model.tflite)
+  - models/mlperf-tiny-ad01                 (ad01_int8.tflite, ad01_fp32.tflite; fp16 built from ad01.h5)
+  - models/mlperf-tiny-kws                  (kws_ref_model.tflite; fp32 and fp16 built from the kws_ref_model weights)
   - models/mlperf-tiny-streaming-wake-word  (strm_ww_int8.tflite)
-  - models/mlperf-tiny-resnet               (pretrainedResnet_quant.tflite, pretrainedResnet.tflite)
-  - models/mlperf-tiny-vww                  (vww_96_int8.tflite, vww_96_float.tflite)
+  - models/mlperf-tiny-resnet8              (pretrainedResnet_quant.tflite, pretrainedResnet.tflite at 1bbcf37f; fp16 built from pretrainedResnet.h5)
+  - models/mlperf-tiny-resnet-wide          (pretrainedResnet_quant.tflite, pretrainedResnet.tflite at eb78d0eb)
+  - models/mlperf-tiny-vww                  (vww_96_int8.tflite, vww_96_float.tflite; fp16 built from vww_96.h5)
 
 Arm ML-Zoo (https://github.com/ARM-software/ML-zoo), Apache License 2.0
 (licenses/Apache-2.0.txt):

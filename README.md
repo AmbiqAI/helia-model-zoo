@@ -1,7 +1,8 @@
 # heliaAOT Model Zoo
 
 This repository is a model zoo for prebuilt TFLite models. Each model has one
-small record, its card, and per precision its TFLite artifact and golden fixture.
+small record, its card, and per precision its TFLite artifact and, where LiteRT can
+run it, a golden fixture (LiteRT has no kernels for native float16 graphs).
 
 ## Repository layout
 
@@ -10,7 +11,7 @@ models/<id>/
   record.json          helia-model-zoo/record@1
   README.md            the model card
   <precision>/model.tflite
-  <precision>/golden.npz
+  <precision>/golden.npz      (every precision except fp16)
 ```
 
 The directory name is the model ID. Precisions are `fp32`, `fp16`, `a8w8`,
@@ -21,8 +22,11 @@ have a golden, where its files are hosted, and its known gaps. Redistributable
 is `yes` for a public record with a licence (whose terms still apply),
 `unverified` for one without, and `private` for an overlay record.
 
-`helia-zoo validate` refuses any `fp32` or `fp16` model that holds int8, uint8
-or int16 tensors (a signature check, skipped with `--no-signatures`). On this
+`helia-zoo validate` refuses a golden on an `fp16` precision, which LiteRT
+cannot replay. Its signature checks, skipped with `--no-signatures`, also
+refuse any `fp32` or `fp16` model that holds int8, uint8 or int16 tensors, any
+`fp16` model that holds float32 or float64 tensors, and float16 tensors in any
+other precision. An `fp16` precision without a golden is not a gap. On this
 repository's own records, it also refuses any tracked `.tflite` or `.npz` file
 that no record lists; `--root` must then be the top of a git checkout. A record
 with several precisions needs the precision named (`zoo://<id>/<precision>`).

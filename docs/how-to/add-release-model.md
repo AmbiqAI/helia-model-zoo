@@ -17,7 +17,7 @@ models/<id>/
   record.json
   README.md
   <precision>/model.tflite
-  <precision>/golden.npz
+  <precision>/golden.npz      (every precision except fp16)
 ```
 
 Precisions are `fp32`, `fp16`, `a8w8`, `a16w8` and `a8w4`.
@@ -148,7 +148,10 @@ helia-zoo validate --replay
 Validation rejects unresolved LFS pointers, path escapes, missing artifacts,
 digest mismatches, duplicate IDs, missing or unexpected NPZ keys,
 signature-incompatible shapes or dtypes, declared tensors that differ from the
-model, `fp32` or `fp16` models holding int8, uint8 or int16 tensors, goldens
+model, `fp32` or `fp16` models holding int8, uint8 or int16 tensors, `fp16`
+models holding float32 or float64 tensors, float16 tensors in any other
+precision, a golden on an `fp16` precision (LiteRT
+has no float16 kernels, so an `fp16` precision has no golden), goldens
 that do not replay exactly, v1 entries that disagree with the records, and
 tracked `.tflite` or `.npz` files that no record lists. Run it from the top of
 the git checkout.
