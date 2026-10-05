@@ -407,8 +407,8 @@ def test_cli_inventory(tmp_path, data, capsys):
     }
     vww = rows["mlperf-tiny-vww"]
     assert (vww["precisions"], vww["golden"], vww["redistributable"], vww["gaps"]) == (
-        ["fp32", "fp16", "a8w8"],
-        ["fp32", "a8w8"],
+        ["fp32", "fp16", "a8w8", "a16w8"],
+        ["fp32", "a8w8", "a16w8"],
         "yes",
         [],
     )
@@ -438,8 +438,8 @@ def test_cli_inventory(tmp_path, data, capsys):
     assert lines[2:] == [
         "| rnnoise | de\\|noise filter | ARM-software/ML-zoo@fec0bb5b | NOASSERTION | unverified | fp32, a8w8 | fp32 "
         "| git-lfs, hf:Example/rnnoise, hf:datasets/Example/goldens | licence unknown, no a8w8 golden |",
-        "| secret | anomaly-detection | mlcommons/tiny@4addd0fa | Apache-2.0 | private | fp32, fp16, a8w8 "
-        "| fp32, a8w8 | git-lfs | - |",
+        "| secret | anomaly-detection | mlcommons/tiny@4addd0fa | Apache-2.0 | private | fp32, fp16, a8w8, a16w8 "
+        "| fp32, a8w8, a16w8 | git-lfs | - |",
     ]
 
 

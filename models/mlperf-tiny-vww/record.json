@@ -81,6 +81,30 @@
         "runtime": "ai-edge-litert==2.1.2",
         "resolver": "builtin_ref"
       }
+    },
+    "a16w8": {
+      "model": {
+        "path": "a16w8/model.tflite",
+        "sha256": "8ba78d62e0ad109c5d05f31df13c52b799a57b2d22fe5c61a451a9f7e40cb9d4",
+        "bytes": 357056
+      },
+      "inputs": [
+        {"name": "serving_default_keras_tensor_84:0", "shape": [1, 96, 96, 3], "dtype": "int16", "scale": 3.0518509447574615e-05, "zero_point": 0}
+      ],
+      "outputs": [
+        {"name": "StatefulPartitionedCall_1:0", "shape": [1, 2], "dtype": "int16", "scale": 3.0517578125e-05, "zero_point": 0}
+      ],
+      "golden": {
+        "path": "a16w8/golden.npz",
+        "sha256": "d439114b8fdd274049768f69682ad25fb67adb3d9e732c325b80fadb836c26b2",
+        "bytes": 55816,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": {"seed": 42},
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin_ref"
+      }
     }
   }
 }
