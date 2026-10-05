@@ -15,6 +15,43 @@
   },
   "io": {"streaming": "stateless", "state_pairs": []},
   "precisions": {
+    "fp32": {
+      "model": {
+        "path": "fp32/model.tflite",
+        "sha256": "391d904d985fe076b52a83a0e838abfece269b26337fe1447a6c1f1182d089d8",
+        "bytes": 101788
+      },
+      "inputs": [
+        {"name": "serving_default_keras_tensor:0", "shape": [1, 49, 10, 1], "dtype": "float32", "scale": null, "zero_point": null}
+      ],
+      "outputs": [
+        {"name": "StatefulPartitionedCall_1:0", "shape": [1, 12], "dtype": "float32", "scale": null, "zero_point": null}
+      ],
+      "golden": {
+        "path": "fp32/golden.npz",
+        "sha256": "15bd3da013204a10167f3a4b7e1cd916753f7de136d437cf00a25bf9ed9443d2",
+        "bytes": 2524,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": {"seed": 42},
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin_ref"
+      }
+    },
+    "fp16": {
+      "model": {
+        "path": "fp16/model.tflite",
+        "sha256": "3db916014e600882119c572ce8e090680e9a0c2bba47ecd3eb644e516037faf3",
+        "bytes": 56948
+      },
+      "inputs": [
+        {"name": "serving_default_keras_tensor:0", "shape": [1, 49, 10, 1], "dtype": "float16", "scale": null, "zero_point": null}
+      ],
+      "outputs": [
+        {"name": "StatefulPartitionedCall_1:0", "shape": [1, 12], "dtype": "float16", "scale": null, "zero_point": null}
+      ]
+    },
     "a8w8": {
       "model": {
         "path": "a8w8/model.tflite",

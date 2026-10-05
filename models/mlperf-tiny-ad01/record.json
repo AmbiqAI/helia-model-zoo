@@ -39,6 +39,19 @@
         "resolver": "builtin_ref"
       }
     },
+    "fp16": {
+      "model": {
+        "path": "fp16/model.tflite",
+        "sha256": "9e6b9904bf5987912b41445f64d7d0233ab66d0128675a764986177fb6b0c064",
+        "bytes": 539436
+      },
+      "inputs": [
+        {"name": "serving_default_keras_tensor_28:0", "shape": [1, 640], "dtype": "float16", "scale": null, "zero_point": null}
+      ],
+      "outputs": [
+        {"name": "StatefulPartitionedCall_1:0", "shape": [1, 640], "dtype": "float16", "scale": null, "zero_point": null}
+      ]
+    },
     "a8w8": {
       "model": {
         "path": "a8w8/model.tflite",

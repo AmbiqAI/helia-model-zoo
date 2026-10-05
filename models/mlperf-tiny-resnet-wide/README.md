@@ -1,6 +1,6 @@
-# ResNet
+# ResNet, wide variant (26/52/104)
 
-MLPerf Tiny image classification reference model stored as the prebuilt int8 (`a8w8`) and float32 (`fp32`) TFLite artifacts.
+An early MLPerf Tiny image classification ResNet (`eb78d0eb`, 205,306 parameters, convolution widths 26/52/104), not the MLPerf Tiny reference ResNet-8 (16/32/64), which is [`mlperf-tiny-resnet8`](../mlperf-tiny-resnet8/README.md). Before 2026-10-05 this record's ID was `mlperf-tiny-resnet`; that ID still resolves at earlier revisions. Stored as the prebuilt int8 (`a8w8`) and float32 (`fp32`) TFLite artifacts.
 
 | Field | Value |
 | --- | --- |

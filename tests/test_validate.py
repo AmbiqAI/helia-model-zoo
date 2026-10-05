@@ -33,7 +33,7 @@ def copy_entry(root, tmp_path, data, model_id):
     item = entry(data, model_id)
     paths = [item["card"]]
     for precision in item["precisions"].values():
-        paths += [precision["model"]["path"], precision["golden"]["path"]]
+        paths += [precision["model"]["path"]] + ([precision["golden"]["path"]] if "golden" in precision else [])
     for path in paths:
         relative = f"models/{model_id}/{path}"
         (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
@@ -96,7 +96,7 @@ def test_declared_tensor_must_match_the_model(root, data):
     assert any(p.startswith("record rnnoise.precisions.a8w8.inputs[1]: record") for p in problems)
 
 
-@pytest.mark.parametrize(("model_id", "resolver"), [("mlperf-tiny-resnet", "builtin"), ("rnnoise", "builtin")])
+@pytest.mark.parametrize(("model_id", "resolver"), [("mlperf-tiny-resnet-wide", "builtin"), ("rnnoise", "builtin")])
 def test_replay_under_the_wrong_resolver_is_refused(root, data, model_id, resolver):
     entry(data, model_id)["precisions"]["a8w8"]["golden"]["resolver"] = resolver
     only(data, model_id)
@@ -407,10 +407,10 @@ def test_cli_inventory(tmp_path, data, capsys):
     }
     vww = rows["mlperf-tiny-vww"]
     assert (vww["precisions"], vww["golden"], vww["redistributable"], vww["gaps"]) == (
-        ["fp32", "a8w8"],
+        ["fp32", "fp16", "a8w8"],
         ["fp32", "a8w8"],
         "yes",
-        [],
+        ["no fp16 golden"],
     )
     assert vww["source"] == "https://github.com/mlcommons/tiny@4addd0fa08d216e20637637874e084895f289da4"
     with pytest.raises(SystemExit):
@@ -438,8 +438,8 @@ def test_cli_inventory(tmp_path, data, capsys):
     assert lines[2:] == [
         "| rnnoise | de\\|noise filter | ARM-software/ML-zoo@fec0bb5b | NOASSERTION | unverified | fp32, a8w8 | fp32 "
         "| git-lfs, hf:Example/rnnoise, hf:datasets/Example/goldens | licence unknown, no a8w8 golden |",
-        "| secret | anomaly-detection | mlcommons/tiny@4addd0fa | Apache-2.0 | private | fp32, a8w8 | fp32, a8w8 "
-        "| git-lfs | - |",
+        "| secret | anomaly-detection | mlcommons/tiny@4addd0fa | Apache-2.0 | private | fp32, fp16, a8w8 "
+        "| fp32, a8w8 | git-lfs | no fp16 golden |",
     ]
 
 

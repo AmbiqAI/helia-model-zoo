@@ -1,0 +1,80 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "mlperf-tiny-resnet8",
+  "title": "ResNet-8",
+  "task": "image-classification",
+  "domain": "vision",
+  "visibility": "public",
+  "license": {"spdx": "Apache-2.0"},
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://github.com/mlcommons/tiny",
+    "revision": "1bbcf37fac1b0c4be0bada2d7ddfb1e0bb4cb6a0",
+    "path": "benchmark/training/image_classification/trained_models/pretrainedResnet_quant.tflite",
+    "sha256": "3c002613d1b2475eb51dd78dfb85a546c8ae658dee71cf6ade43b022fe205415"
+  },
+  "io": {"streaming": "stateless", "state_pairs": []},
+  "precisions": {
+    "fp32": {
+      "model": {
+        "path": "fp32/model.tflite",
+        "sha256": "b5c0046d6e0328b4956afd6baa29555a29b1f1c65bdd45aaed75b7cd484d9f79",
+        "bytes": 318144
+      },
+      "inputs": [
+        {"name": "input_1", "shape": [1, 32, 32, 3], "dtype": "float32", "scale": null, "zero_point": null}
+      ],
+      "outputs": [
+        {"name": "Identity", "shape": [1, 10], "dtype": "float32", "scale": null, "zero_point": null}
+      ],
+      "golden": {
+        "path": "fp32/golden.npz",
+        "sha256": "37e5a3fe36a3e8a0cf6b5c5a9c9b991ef07b89c2993ab5554278cb191e3b26a7",
+        "bytes": 12844,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": {"seed": 42},
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin_ref"
+      }
+    },
+    "fp16": {
+      "model": {
+        "path": "fp16/model.tflite",
+        "sha256": "1266a31bce015ba776897391ca4d7039ce7af2c9e159d3f90efea047c1c51e95",
+        "bytes": 166608
+      },
+      "inputs": [
+        {"name": "serving_default_keras_tensor_29:0", "shape": [1, 32, 32, 3], "dtype": "float16", "scale": null, "zero_point": null}
+      ],
+      "outputs": [
+        {"name": "StatefulPartitionedCall_1:0", "shape": [1, 10], "dtype": "float16", "scale": null, "zero_point": null}
+      ]
+    },
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "3c002613d1b2475eb51dd78dfb85a546c8ae658dee71cf6ade43b022fe205415",
+        "bytes": 98496
+      },
+      "inputs": [
+        {"name": "input_1_int8", "shape": [1, 32, 32, 3], "dtype": "int8", "scale": 1.0, "zero_point": -128}
+      ],
+      "outputs": [
+        {"name": "Identity_int8", "shape": [1, 10], "dtype": "int8", "scale": 0.00390625, "zero_point": -128}
+      ],
+      "golden": {
+        "path": "a8w8/golden.npz",
+        "sha256": "2b9d73e361dcdeb143cef02de4f44b8c917b592fdf3c7e7204d5a91b24e391ab",
+        "bytes": 3598,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": {"seed": 42},
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin_ref"
+      }
+    }
+  }
+}

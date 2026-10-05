@@ -69,7 +69,7 @@ def _check_file(
 
 
 def _check_signature(precision: Precision, model: Path, where: str, problems: list[str]) -> None:
-    interpreter = runtime.interpreter(model)
+    interpreter = runtime.interpreter(model, allocate=False)
     for role, details, declared in (
         ("inputs", interpreter.get_input_details(), precision.inputs),
         ("outputs", interpreter.get_output_details(), precision.outputs),

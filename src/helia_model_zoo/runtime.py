@@ -34,8 +34,12 @@ def runtime_version(distribution: str) -> str | None:
         return None
 
 
-def interpreter(model: Path, resolver: str | None = None) -> Any:
-    """An allocated LiteRT interpreter; ``resolver`` is ``builtin``, ``builtin_ref`` or None (LiteRT's default)."""
+def interpreter(model: Path, resolver: str | None = None, allocate: bool = True) -> Any:
+    """A LiteRT interpreter; ``resolver`` is ``builtin``, ``builtin_ref`` or None (LiteRT's default).
+
+    With ``allocate`` False the graph is not prepared: its tensors and signatures can be read even when
+    LiteRT has no kernel for them, as for a native float16 graph.
+    """
     litert = litert_module()
     kinds = {
         None: litert.OpResolverType.AUTO,
@@ -43,7 +47,8 @@ def interpreter(model: Path, resolver: str | None = None) -> Any:
         "builtin_ref": litert.OpResolverType.BUILTIN_REF,
     }
     result = litert.Interpreter(model_path=str(model), experimental_op_resolver_type=kinds[resolver])
-    result.allocate_tensors()
+    if allocate:
+        result.allocate_tensors()
     return result
 
 
@@ -62,7 +67,7 @@ def describe(detail: dict[str, Any]) -> Tensor:
 
 def model_tensors(model: Path) -> tuple[tuple[Tensor, ...], tuple[Tensor, ...]]:
     """A model's inputs and outputs, in subgraph order."""
-    loaded = interpreter(model)
+    loaded = interpreter(model, allocate=False)
     return (
         tuple(describe(d) for d in loaded.get_input_details()),
         tuple(describe(d) for d in loaded.get_output_details()),
@@ -71,7 +76,7 @@ def model_tensors(model: Path) -> tuple[tuple[Tensor, ...], tuple[Tensor, ...]]:
 
 def signature_names(model: Path) -> tuple[list[str], list[str]] | None:
     """Each input's and output's signature name, in subgraph order; None without a single signature."""
-    loaded = interpreter(model)
+    loaded = interpreter(model, allocate=False)
     signatures = loaded.get_signature_list()
     if len(signatures) != 1:
         return None
