@@ -148,8 +148,10 @@ helia-zoo validate --replay
 Validation rejects unresolved LFS pointers, path escapes, missing artifacts,
 digest mismatches, duplicate IDs, missing or unexpected NPZ keys,
 signature-incompatible shapes or dtypes, declared tensors that differ from the
-model, goldens that do not replay exactly, v1 entries that disagree with the
-records, and tracked `.tflite` or `.npz` files that no record lists.
+model, `fp32` or `fp16` models holding int8, uint8 or int16 tensors, goldens
+that do not replay exactly, v1 entries that disagree with the records, and
+tracked `.tflite` or `.npz` files that no record lists (`--root` must be the
+top of a git checkout).
 
 If an existing golden changes, summarize representative and maximum numerical
 differences in the pull request and obtain approval from the model/corpus
