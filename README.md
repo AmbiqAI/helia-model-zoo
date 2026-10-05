@@ -16,13 +16,16 @@ models/<id>/
 The directory name is the model ID. Precisions are `fp32`, `fp16`, `a8w8`,
 `a16w8` and `a8w4`. There is no other inventory: `helia-zoo list --markdown`
 (or `--json`) prints one from the records. For each model it gives the task,
-source, licence, whether it is redistributable (`yes` for a public record with
-a licence, whose terms still apply), its precisions, which of them have a
-golden, where its files are hosted, and its known gaps. Run from the top of a
-git checkout, `helia-zoo validate` refuses any tracked `.tflite` or `.npz` file
-that no record lists, and any `fp32` or `fp16` model holding int8, uint8 or
-int16 tensors. A record with several precisions needs the precision named
-(`zoo://<id>/<precision>`).
+source, licence, whether it is redistributable, its precisions, which of them
+have a golden, where its files are hosted, and its known gaps. Redistributable
+is `yes` for a public record with a licence (whose terms still apply),
+`unverified` for one without, and `private` for an overlay record.
+
+`helia-zoo validate` refuses any `fp32` or `fp16` model that holds int8, uint8
+or int16 tensors (a signature check, skipped with `--no-signatures`). On this
+repository's own records, it also refuses any tracked `.tflite` or `.npz` file
+that no record lists; `--root` must then be the top of a git checkout. A record
+with several precisions needs the precision named (`zoo://<id>/<precision>`).
 
 To contribute a model/golden pair for helia-aot release testing, follow
 [Add a model to the release corpus](docs/how-to/add-release-model.md). Adding an
@@ -154,8 +157,8 @@ looked up here. Without a commit, the installed record is used, so pin one
 wherever results must be reproducible.
 
 `helia-zoo list [--json | --markdown]`, `show <id>`,
-`fetch <id> [--golden] [--card]` and `validate` expose the same on the command
-line. Installing from Git with git-lfs present
+`fetch <id> [--precision P] [--golden] [--card] [--root DIR]` and `validate`
+expose the same on the command line. Installing from Git with git-lfs present
 downloads every artifact in the repository; set `GIT_LFS_SKIP_SMUDGE=1` to skip
 them.
 

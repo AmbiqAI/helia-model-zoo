@@ -318,12 +318,17 @@ def main(argv: list[str] | None = None) -> int:
     show = commands.add_parser("show", help="print one record as JSON")
     show.add_argument("id", help="model ID")
     show.set_defaults(run=_show)
-    about = (
-        "validate the records against a hydrated checkout; without --models, also refuse any tracked "
-        ".tflite or .npz file that no record lists (--root must then be the top of a git checkout)"
+    check = commands.add_parser(
+        "validate",
+        help="validate the records against a hydrated checkout",
+        description="Validate the records against a hydrated checkout. Unless the top-level --models option names "
+        "other records, also refuse any tracked .tflite or .npz file that no record lists.",
     )
-    check = commands.add_parser("validate", help=about, description=about)
-    check.add_argument("--root", default=".", help="repository checkout with Git LFS hydrated (default: .)")
+    check.add_argument(
+        "--root",
+        default=".",
+        help="repository checkout with Git LFS hydrated, at the top of its git checkout (default: .)",
+    )
     check.add_argument(
         "--replay", action="store_true", help="require each golden to replay exactly; needs the recorded LiteRT version"
     )
