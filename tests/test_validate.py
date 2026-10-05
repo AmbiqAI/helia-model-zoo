@@ -461,3 +461,15 @@ def test_golden_generate_explains_a_model_litert_cannot_run(root, tmp_path, caps
     model = root / "models/mlperf-tiny-kws/fp16/model.tflite"
     assert main(["golden", "generate", str(model), str(tmp_path / "g.npz")]) == 1
     assert f"LiteRT cannot run {model}" in capsys.readouterr().err
+
+
+def test_an_fp16_precision_has_no_golden(root, tmp_path, data, capsys):
+    item = entry(data, "mlperf-tiny-kws")
+    item["precisions"]["fp16"]["golden"] = item["precisions"]["fp32"]["golden"]
+    problems = problems_of(root, only(data, "mlperf-tiny-kws"), signatures=True, replay=True)
+    assert any("precisions.fp16.golden: LiteRT has no float16 kernels" in p for p in problems)
+    model = root / "models/mlperf-tiny-kws/fp16/model.tflite"
+    with np.load(root / "models/mlperf-tiny-kws/fp32/golden.npz") as arrays:
+        np.savez(tmp_path / "g.npz", **{k: arrays[k].astype(np.float16) for k in arrays.files})
+    assert main(["golden", "check", str(model), str(tmp_path / "g.npz")]) == 2
+    assert f"LiteRT cannot run {model}" in capsys.readouterr().err
