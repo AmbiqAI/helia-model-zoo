@@ -1,7 +1,8 @@
 # heliaAOT Model Zoo
 
 This repository is a model zoo for prebuilt TFLite models. Each model has one
-small record, its card, and per precision its TFLite artifact and golden fixture.
+small record, its card, and per precision its TFLite artifact and, where LiteRT can
+run it, a golden fixture (LiteRT has no kernels for native float16 graphs).
 
 ## Repository layout
 

@@ -448,3 +448,16 @@ def test_a_float_precision_must_hold_a_float_model(root, data):
     item["precisions"]["fp32"] = item["precisions"].pop("a8w8")
     problems = problems_of(root, only(data, "rnnoise"), replay=True)
     assert "record rnnoise.precisions.fp32: not a float model: 94 of its tensors are int8, uint8 or int16" in problems
+
+
+def test_an_fp16_precision_must_hold_a_native_float16_model(root, data):
+    item = entry(data, "mlperf-tiny-kws")
+    item["precisions"]["fp16"] = item["precisions"].pop("fp32")
+    problems = problems_of(root, only(data, "mlperf-tiny-kws"), signatures=True)
+    assert any("precisions.fp16: not a native float16 model:" in p for p in problems)
+
+
+def test_golden_generate_explains_a_model_litert_cannot_run(root, tmp_path, capsys):
+    model = root / "models/mlperf-tiny-kws/fp16/model.tflite"
+    assert main(["golden", "generate", str(model), str(tmp_path / "g.npz")]) == 1
+    assert f"LiteRT cannot run {model}" in capsys.readouterr().err

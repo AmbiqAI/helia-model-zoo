@@ -257,6 +257,9 @@ def _golden_generate(args: argparse.Namespace) -> int:
     except (KeyError, ValueError, OSError) as error:
         print(error.args[0] if isinstance(error, KeyError) else error, file=sys.stderr)
         return 1
+    except RuntimeError as error:  # LiteRT cannot prepare the graph, e.g. a native float16 model
+        print(f"LiteRT cannot run {args.model}: {error}", file=sys.stderr)
+        return 1
     golden.write(args.out, arrays)
     if args.print_record:
         source = {"uri": args.source_uri, "sha256": args.source_sha256} if args.data else {"seed": args.seed}
