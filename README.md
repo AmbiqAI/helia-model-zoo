@@ -16,9 +16,11 @@ models/<id>/
 The directory name is the model ID. Precisions are `fp32`, `fp16`, `a8w8`,
 `a16w8` and `a8w4`. There is no other inventory: `helia-zoo list --markdown`
 (or `--json`) prints one from the records. For each model it gives the task,
-source, licence, whether it is redistributable, its precisions, which of them
-have a golden, where its files are hosted, and its known gaps.
-`helia-zoo validate` refuses any model or golden file that no record lists.
+source, licence, whether it is redistributable (`yes` for a public record with
+a licence, whose terms still apply), its precisions, which of them have a
+golden, where its files are hosted, and its known gaps. `helia-zoo validate`
+refuses any tracked `.tflite` or `.npz` file that no record lists. A record
+with several precisions needs the precision named (`zoo://<id>/<precision>`).
 
 To contribute a model/golden pair for helia-aot release testing, follow
 [Add a model to the release corpus](docs/how-to/add-release-model.md). Adding an
@@ -101,9 +103,8 @@ python tools/validate_corpus.py corpus-manifest-v1.json
 ```
 
 `helia-zoo golden generate` writes a `single` golden with LiteRT's reference
-kernels by default. For some models (here, KWS, RNNoise, Wav2Letter and
-MobileNet V2) their outputs differ from the optimized kernels', which
-`--resolver builtin` selects. A model with `state_in_k`/`state_out_k` state
+kernels by default. For many models their outputs differ from the optimized
+kernels', which `--resolver builtin` selects. A model with `state_in_k`/`state_out_k` state
 names gets its state inputs at the reset value, not drawn from the seed.
 
 After intentionally changing a golden, update its record's digest. The review

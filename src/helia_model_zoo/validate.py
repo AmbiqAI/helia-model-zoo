@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import math
-import os
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -18,7 +18,7 @@ from .manifest import FileRef, Manifest, Precision, Record, load_manifest
 
 __all__ = ["ValidationError", "sha256_file", "validate"]
 
-ARTIFACT_SUFFIXES = (".tflite", ".npz", ".h5")
+ARTIFACT_SUFFIXES = (".tflite", ".npz")
 
 
 class ValidationError(ValueError):
@@ -80,6 +80,12 @@ def _check_signature(precision: Precision, model: Path, where: str, problems: li
         for index, (have, want) in enumerate(zip(actual, declared, strict=True)):
             if have != want:
                 problems.append(f"{where}.{role}[{index}]: record {want} does not match the model {have}")
+    if precision.name in ("fp32", "fp16"):
+        integer = [
+            d for d in interpreter.get_tensor_details() if np.dtype(d["dtype"]).name in ("int8", "uint8", "int16")
+        ]
+        if integer:
+            problems.append(f"{where}: {len(integer)} tensors are int8, uint8 or int16; this is not a float model")
 
 
 def _check_state_pairs(record: Record, precision: Precision, where: str, problems: list[str]) -> None:
@@ -171,8 +177,8 @@ def validate(
             is given.
         cache: Where to fetch files from outside this repository (default: a fresh directory when
             ``public``, else ``hydrate.cache_dir()``).
-        complete: ``manifest`` holds every record for ``root``: refuse any ``.tflite``, ``.npz`` or ``.h5``
-            file under ``root`` that no record lists (directories starting with ``.`` are skipped).
+        complete: ``manifest`` holds every record for ``root``, a git checkout: refuse any tracked ``.tflite``
+            or ``.npz`` file (in any letter case) that no record lists.
 
     Raises:
         ValidationError: Listing every problem found.
@@ -200,13 +206,17 @@ def validate(
 
 
 def _check_unlisted(root: Path, manifest: Manifest, problems: list[str]) -> None:
-    listed = {(root / ref.path).resolve() for r in manifest.records for ref in r.files() if ref.in_repository}
-    for directory, names, files in os.walk(root):
-        names[:] = sorted(n for n in names if not n.startswith("."))
-        for name in sorted(files):
-            path = Path(directory) / name
-            if name.endswith(ARTIFACT_SUFFIXES) and path.resolve() not in listed:
-                problems.append(f"{path.relative_to(root)}: no record lists this artifact")
+    listed = {ref.path for record in manifest.records for ref in record.files() if ref.in_repository}
+    try:
+        tracked = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True, text=True
+        ).stdout.split("\0")
+    except (OSError, subprocess.CalledProcessError) as error:
+        problems.append(f"{root}: cannot list the tracked files of this git checkout: {error}")
+        return
+    for path in tracked:
+        if path.lower().endswith(ARTIFACT_SUFFIXES) and path not in listed:
+            problems.append(f"{path}: no record lists this artifact")
 
 
 def _check_records(

@@ -29,7 +29,8 @@ def inventory_row(record: Record) -> dict:
     precisions = sorted(record.precisions, key=PRECISIONS.index)
     golden = [name for name in precisions if record.precisions[name].golden is not None]
     files = [ref for p in record.precisions.values() for ref in (p.model, *([p.golden.file] if p.golden else []))]
-    gaps = [] if record.spdx else ["licence unknown"]
+    licensed = record.spdx not in (None, "NOASSERTION", "NONE")
+    gaps = [] if licensed else ["licence unknown"]
     if upstream is None or upstream.revision is None:
         gaps.append("source revision unknown")
     gaps += [f"no {name} golden" for name in precisions if name not in golden]
@@ -40,20 +41,32 @@ def inventory_row(record: Record) -> dict:
         "domain": record.domain,
         "source": None if upstream is None else "@".join(filter(None, (upstream.repo, upstream.revision))),
         "license": record.spdx,
-        "redistributable": "private" if record.visibility == "private" else "yes" if record.spdx else "unverified",
+        "redistributable": "private" if record.visibility == "private" else "yes" if licensed else "unverified",
         "precisions": precisions,
         "golden": golden,
-        "hosting": sorted({"git-lfs" if ref.in_repository else f"hf:{parse_hf(ref.uri).repo_id}" for ref in files}),
+        "hosting": sorted({"git-lfs" if ref.in_repository else _hf_repo(ref.uri) for ref in files}),
         "gaps": gaps,
     }
+
+
+def _hf_repo(uri: str) -> str:
+    location = parse_hf(uri)
+    kind = "" if location.repo_type == "model" else f"{location.repo_type}s/"
+    return f"hf:{kind}{location.repo_id}"
 
 
 def _cell(value) -> str:
     if value is None or value == []:
         return "-"
     text = ", ".join(value) if isinstance(value, list) else str(value)
-    text = re.sub(r"@([0-9a-f]{8})[0-9a-f]{32}\b", r"@\1", text.removeprefix("https://github.com/"))
-    return text.replace("|", "\\|")
+    return " ".join(text.split()).replace("|", "\\|")
+
+
+def _source(value: str | None) -> str | None:
+    """A GitHub source as ``<org>/<repo>@<short revision>``."""
+    if value is None:
+        return None
+    return re.sub(r"@([0-9a-f]{8})[0-9a-f]{32}$", r"@\1", value.removeprefix("https://github.com/"))
 
 
 _COLUMNS = (
@@ -77,6 +90,7 @@ def _list(args: argparse.Namespace) -> int:
         print("| " + " | ".join(title for title, _ in _COLUMNS) + " |")
         print("|" + "---|" * len(_COLUMNS))
         for row in map(inventory_row, records):
+            row["source"] = _source(row["source"])
             print("| " + " | ".join(_cell(row[key]) for _, key in _COLUMNS) + " |")
     else:
         for record in records:
@@ -304,7 +318,11 @@ def main(argv: list[str] | None = None) -> int:
     show = commands.add_parser("show", help="print one record as JSON")
     show.add_argument("id", help="model ID")
     show.set_defaults(run=_show)
-    check = commands.add_parser("validate", help="validate the records against a hydrated checkout")
+    check = commands.add_parser(
+        "validate",
+        help="validate the records against a hydrated checkout; without --models, also refuse any tracked "
+        ".tflite or .npz file that no record lists",
+    )
     check.add_argument("--root", default=".", help="repository checkout with Git LFS hydrated (default: .)")
     check.add_argument(
         "--replay", action="store_true", help="require each golden to replay exactly; needs the recorded LiteRT version"
