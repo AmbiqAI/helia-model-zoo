@@ -41,14 +41,14 @@
       ],
       "golden": {
         "path": "a8w8/golden.npz",
-        "sha256": "6dc9a898f67c468e9d220873aa84bde332cdb9dbfe34b2bbcd9de7b738671047",
+        "sha256": "fdbdf58e59bebaa4beeb4a09e9ba0a5de9928600d75ed1fccc9ead79d5e73b58",
         "bytes": 152045,
         "kind": "single",
         "steps": 1,
         "resets": [],
-        "source": null,
+        "source": {"uri": "https://media.githubusercontent.com/media/AmbiqAI/helia-model-zoo/30f5bc3ae76ba6a691cf868bd0a90d3644bbcd8c/models/mobilenet-v2/a8w8/golden.npz", "sha256": "6dc9a898f67c468e9d220873aa84bde332cdb9dbfe34b2bbcd9de7b738671047"},
         "runtime": "ai-edge-litert==2.1.2",
-        "resolver": "builtin"
+        "resolver": "builtin_ref"
       }
     }
   }

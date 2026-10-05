@@ -96,7 +96,7 @@ def test_declared_tensor_must_match_the_model(root, data):
     assert any(p.startswith("record rnnoise.precisions.a8w8.inputs[1]: record") for p in problems)
 
 
-@pytest.mark.parametrize(("model_id", "resolver"), [("mlperf-tiny-resnet", "builtin_ref"), ("rnnoise", "builtin")])
+@pytest.mark.parametrize(("model_id", "resolver"), [("mlperf-tiny-resnet", "builtin"), ("rnnoise", "builtin")])
 def test_replay_under_the_wrong_resolver_is_refused(root, data, model_id, resolver):
     entry(data, model_id)["precisions"]["a8w8"]["golden"]["resolver"] = resolver
     only(data, model_id)
