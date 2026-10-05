@@ -338,3 +338,69 @@ def test_cli_without_litert_explains_the_extra(root, monkeypatch, capsys):
     assert main(["validate", "--root", str(root)]) == 2
     assert "install helia-model-zoo[litert]" in capsys.readouterr().err
     assert main(["validate", "--root", str(root), "--no-signatures"]) == 0
+
+
+def test_a_complete_check_refuses_unlisted_artifacts(root, tmp_path, data):
+    data = copy_entry(root, tmp_path, data, "rnnoise")
+    validate(tmp_path, parse_records(data), signatures=False, complete=True)
+    for stray in ("audio/x/model.tflite", "models/rnnoise/extra.npz", ".venv/lib/data.npz", "models/rnnoise/notes.txt"):
+        (tmp_path / stray).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / stray).write_bytes(b"x")
+    validate(tmp_path, parse_records(data), signatures=False)
+    assert problems_of(tmp_path, data, signatures=False, complete=True) == [
+        "audio/x/model.tflite: no record lists this artifact",
+        "models/rnnoise/extra.npz: no record lists this artifact",
+    ]
+
+
+def test_cli_inventory(tmp_path, data, capsys):
+    assert main(["list", "--json"]) == 0
+    rows = {row["id"]: row for row in json.loads(capsys.readouterr().out)}
+    assert rows["dfnet2"] | {"title": None} == {
+        "id": "dfnet2",
+        "title": None,
+        "task": "speech-enhancement",
+        "domain": "audio",
+        "source": "https://github.com/Rikorose/DeepFilterNet",
+        "license": None,
+        "redistributable": "unverified",
+        "precisions": ["a16w8"],
+        "golden": ["a16w8"],
+        "hosting": ["git-lfs"],
+        "gaps": ["licence unknown", "source revision unknown"],
+    }
+    kws = rows["mlperf-tiny-kws"]
+    assert (kws["precisions"], kws["golden"], kws["redistributable"], kws["gaps"]) == (
+        ["fp32", "a8w8"],
+        ["fp32", "a8w8"],
+        "yes",
+        [],
+    )
+    assert kws["source"] == "https://github.com/mlcommons/tiny@4addd0fa08d216e20637637874e084895f289da4"
+    item = entry(data, "rnnoise")
+    item.update(visibility="private", task="de|noise")
+    precision = item["precisions"]["a8w8"]
+    precision.pop("golden")
+    precision["model"].pop("path")
+    precision["model"]["uri"] = "hf://Example/rnnoise@" + "a" * 40 + "/model.tflite"
+    (tmp_path / "models/rnnoise").mkdir(parents=True)
+    (tmp_path / "models/rnnoise/record.json").write_text(json.dumps(item))
+    assert main(["--models", str(tmp_path / "models"), "list", "--markdown"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == "| ID | Task | Source | Licence | Redistributable | Precisions | Golden | Hosting | Gaps |"
+    assert lines[2] == (
+        "| rnnoise | de\\|noise | ARM-software/ML-zoo@fec0bb5b | Apache-2.0 | private | a8w8 | - "
+        "| hf:Example/rnnoise | no a8w8 golden |"
+    )
+    assert len(lines) == 3
+
+
+def test_cli_validate_refuses_unlisted_artifacts_in_its_root(root, tmp_path, data, capsys):
+    item = entry(copy_entry(root, tmp_path, data, "rnnoise"), "rnnoise")
+    (tmp_path / "models/rnnoise/record.json").write_text(json.dumps(item))
+    command = ["validate", "--root", str(tmp_path), "--no-signatures", "--no-v1"]
+    assert main(command) == 0
+    (tmp_path / "models/rnnoise/a8w8/old.tflite").write_bytes(b"x")
+    assert main(command) == 1
+    assert "models/rnnoise/a8w8/old.tflite: no record lists this artifact" in capsys.readouterr().err
+    assert main(["--models", str(tmp_path / "models"), *command]) == 0

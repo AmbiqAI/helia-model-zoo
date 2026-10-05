@@ -62,7 +62,8 @@ helia-aot. For the standard deterministic generator:
 python -m venv .golden-venv
 . .golden-venv/bin/activate
 python -m pip install -r tools/golden-requirements.txt
-python tools/generate_golden.py path/to/model.tflite path/to/golden.npz --seed 42
+python -m pip install --no-deps -e .
+helia-zoo golden generate path/to/model.tflite path/to/golden.npz --seed 42
 ```
 
 The NPZ must contain consecutive `input_N` and `output_N` arrays whose shapes

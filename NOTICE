@@ -8,7 +8,7 @@ Model artifacts (`*.tflite`) are not covered by that license. Each remains under
 the license of its upstream source; including it here does not relicense it.
 Golden fixtures (`golden.npz`) are produced by running a model on generated
 inputs and are distributed under the same terms as that model. Each model card
-(`models/<id>/README.md`, or `audio/gtcrn/README.md`) records the source,
+(`models/<id>/README.md`) records the source,
 license, training and any conversion. Entries marked TODO(verify) are unconfirmed.
 
 Third-party models
@@ -16,15 +16,11 @@ Third-party models
 
 MLPerf Tiny (https://github.com/mlcommons/tiny), Apache License 2.0
 (licenses/Apache-2.0.txt):
-  - models/mlperf-tiny-ad01                 (ad01_int8.tflite)
-  - models/mlperf-tiny-kws                  (kws_ref_model.tflite)
+  - models/mlperf-tiny-ad01                 (ad01_int8.tflite, ad01_fp32.tflite)
+  - models/mlperf-tiny-kws                  (kws_ref_model.tflite, kws_ref_model_float32.tflite)
   - models/mlperf-tiny-streaming-wake-word  (strm_ww_int8.tflite)
-  - models/mlperf-tiny-resnet               (pretrainedResnet_quant.tflite)
-  - models/mlperf-tiny-vww                  (vww_96_int8.tflite)
-  - float models: anomaly-detection/mlperf-tiny/ad01/ad01_fp32.tflite,
-    audio/mlperf-tiny/kws_ref/kws_ref_model_float32.tflite,
-    vision/mlperf-tiny/resnet/pretrainedResnet.tflite,
-    vision/mlperf-tiny/vww/vww_96_float.tflite
+  - models/mlperf-tiny-resnet               (pretrainedResnet_quant.tflite, pretrainedResnet.tflite)
+  - models/mlperf-tiny-vww                  (vww_96_int8.tflite, vww_96_float.tflite)
 
 Arm ML-Zoo (https://github.com/ARM-software/ML-zoo), Apache License 2.0
 (licenses/Apache-2.0.txt):
@@ -36,5 +32,3 @@ Derived from third-party models (conversion source and license TODO(verify)):
   - models/dfnet2   DeepFilterNet2, https://github.com/Rikorose/DeepFilterNet,
                     MIT OR Apache-2.0, Copyright (c) 2021 Hendrik Schröter
                     (licenses/DeepFilterNet-MIT.txt)
-  - audio/gtcrn     GTCRN, https://github.com/Xiaobin-Rong/gtcrn,
-                    MIT, Copyright (c) 2024 Rong Xiaobin (licenses/gtcrn-MIT.txt)

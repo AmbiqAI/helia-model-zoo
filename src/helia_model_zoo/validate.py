@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import tempfile
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from .hydrate import LFS_POINTER_PREFIX, FetchError, fetch_file, sha256_file
 from .manifest import FileRef, Manifest, Precision, Record, load_manifest
 
 __all__ = ["ValidationError", "sha256_file", "validate"]
+
+ARTIFACT_SUFFIXES = (".tflite", ".npz", ".h5")
 
 
 class ValidationError(ValueError):
@@ -151,6 +154,7 @@ def validate(
     v1: Path | None = None,
     public: bool = True,
     cache: Path | None = None,
+    complete: bool = False,
 ) -> None:
     """Validate every record against a hydrated checkout.
 
@@ -167,6 +171,8 @@ def validate(
             is given.
         cache: Where to fetch files from outside this repository (default: a fresh directory when
             ``public``, else ``hydrate.cache_dir()``).
+        complete: ``manifest`` holds every record for ``root``: refuse any ``.tflite``, ``.npz`` or ``.h5``
+            file under ``root`` that no record lists (directories starting with ``.`` are skipped).
 
     Raises:
         ValidationError: Listing every problem found.
@@ -185,10 +191,22 @@ def validate(
     finally:
         if fresh is not None:
             fresh.cleanup()
+    if complete:
+        _check_unlisted(root, manifest, problems)
     if v1 is not None:
         _check_v1(manifest, v1, problems)
     if problems:
         raise ValidationError(problems)
+
+
+def _check_unlisted(root: Path, manifest: Manifest, problems: list[str]) -> None:
+    listed = {(root / ref.path).resolve() for r in manifest.records for ref in r.files() if ref.in_repository}
+    for directory, names, files in os.walk(root):
+        names[:] = sorted(n for n in names if not n.startswith("."))
+        for name in sorted(files):
+            path = Path(directory) / name
+            if name.endswith(ARTIFACT_SUFFIXES) and path.resolve() not in listed:
+                problems.append(f"{path.relative_to(root)}: no record lists this artifact")
 
 
 def _check_records(

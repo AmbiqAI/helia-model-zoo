@@ -14,16 +14,15 @@ models/<id>/
 ```
 
 The directory name is the model ID. Precisions are `fp32`, `fp16`, `a8w8`,
-`a16w8` and `a8w4`. There is no other inventory: `helia-zoo list` prints the
-models from the records. No record lists GTCRN (`audio/gtcrn/`) or the float
-MLPerf Tiny models that remain beside it under `audio/`, `vision/` and
-`anomaly-detection/`.
+`a16w8` and `a8w4`. There is no other inventory: `helia-zoo list --markdown`
+(or `--json`) prints one from the records. For each model it gives the task,
+source, licence, whether it is redistributable, its precisions, which of them
+have a golden, where its files are hosted, and its known gaps.
+`helia-zoo validate` refuses any model or golden file that no record lists.
 
 To contribute a model/golden pair for helia-aot release testing, follow
 [Add a model to the release corpus](docs/how-to/add-release-model.md). Adding an
 artifact here and enabling it in helia-aot are separate, reviewed changes.
-
-The template in `convert-yaml/convert.yaml` is a `heliaAOT` conversion template. It is included as a reference for adapting a zoo model into a `heliaAOT` conversion flow with a custom module output path or platform configuration.
 
 ## Golden fixtures
 
@@ -96,22 +95,16 @@ Future golden updates use the pinned LiteRT environment in
 python -m venv .golden-venv
 . .golden-venv/bin/activate
 python -m pip install -r tools/golden-requirements.txt
-python tools/generate_golden.py path/to/model.tflite path/to/golden.npz --seed 42
+python -m pip install --no-deps -e .
+helia-zoo golden generate path/to/model.tflite path/to/golden.npz --seed 42
 python tools/validate_corpus.py corpus-manifest-v1.json
 ```
 
-`tools/generate_golden.py` writes a `single` golden with LiteRT's reference
-kernels; `--resolver builtin` selects the optimized kernels instead. Two
-behaviours differ from earlier versions of the script:
-
-- Outputs come from the reference kernels by default. For some models (here,
-  KWS, RNNoise, Wav2Letter and MobileNet V2) they differ from the optimized
-  kernels' outputs. With `--resolver builtin`, the script reproduces the
-  earlier script's files.
-- A model with `state_in_k`/`state_out_k` state names gets its state inputs at
-  the reset value, not drawn from the seed. The other inputs' draws therefore
-  differ from the earlier script for the same seed. None of the current models
-  has such names.
+`helia-zoo golden generate` writes a `single` golden with LiteRT's reference
+kernels by default. For some models (here, KWS, RNNoise, Wav2Letter and
+MobileNet V2) their outputs differ from the optimized kernels', which
+`--resolver builtin` selects. A model with `state_in_k`/`state_out_k` state
+names gets its state inputs at the reset value, not drawn from the seed.
 
 After intentionally changing a golden, update its record's digest. The review
 description must state the reference runtime/version, seed and any non-default

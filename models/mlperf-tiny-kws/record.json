@@ -15,6 +15,30 @@
   },
   "io": {"streaming": "stateless", "state_pairs": []},
   "precisions": {
+    "fp32": {
+      "model": {
+        "path": "fp32/model.tflite",
+        "sha256": "e5004c6f1012246e33fa068d8488325538e0444073cd361f5a7edb40c73f12d2",
+        "bytes": 43392
+      },
+      "inputs": [
+        {"name": "input_1", "shape": [1, 49, 10, 1], "dtype": "float32", "scale": null, "zero_point": null}
+      ],
+      "outputs": [
+        {"name": "Identity", "shape": [1, 12], "dtype": "float32", "scale": null, "zero_point": null}
+      ],
+      "golden": {
+        "path": "fp32/golden.npz",
+        "sha256": "ca78cd34096c584d1d77bd6b53c5498bbb3ba4ecd54a6286f7c66248ef19f996",
+        "bytes": 2524,
+        "kind": "single",
+        "steps": 1,
+        "resets": [],
+        "source": {"seed": 42},
+        "runtime": "ai-edge-litert==2.1.2",
+        "resolver": "builtin_ref"
+      }
+    },
     "a8w8": {
       "model": {
         "path": "a8w8/model.tflite",
