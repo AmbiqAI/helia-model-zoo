@@ -10,6 +10,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from .manifest import PRECISIONS, ManifestError, Record, load_manifest, parse_hf
 
@@ -44,7 +45,16 @@ def inventory_row(record: Record) -> dict:
         "redistributable": "private" if record.visibility == "private" else "yes" if licensed else "unverified",
         "precisions": precisions,
         "golden": golden,
-        "hosting": sorted({"git-lfs" if ref.in_repository else _hf_repo(ref.uri) for ref in files}),
+        "hosting": sorted(
+            {
+                "git-lfs"
+                if ref.in_repository
+                else f"https:{urlsplit(ref.uri).netloc}"
+                if ref.scheme == "https"
+                else _hf_repo(ref.uri)
+                for ref in files
+            }
+        ),
         "gaps": gaps,
     }
 

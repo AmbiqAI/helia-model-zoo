@@ -13,6 +13,7 @@ from conftest import POINTER, entry
 
 import helia_model_zoo as zoo
 from helia_model_zoo import hydrate
+from helia_model_zoo.cli import inventory_row
 from helia_model_zoo.hydrate import FetchError, fetch_file
 from helia_model_zoo.manifest import FileRef, ManifestError, parse_hf, parse_records
 
@@ -188,8 +189,72 @@ def test_hf_uri_forms():
 def test_other_schemes_are_not_fetched(monkeypatch):
     server = Server(monkeypatch)
     with pytest.raises(FetchError, match="unsupported source"):
-        fetch_file(artifact("https://example.com/m.tflite"), revision=COMMIT)
+        fetch_file(artifact("http://example.com/m.tflite"), revision=COMMIT)
     assert server.urls == []
+
+
+HTTPS = "https://example.com/pinned/model.tflite"
+
+
+def test_https_record_fetches_and_revalidates_cached_artifact(data, monkeypatch, tmp_path):
+    server = Server(monkeypatch)
+    model = entry(data, "rnnoise")["precisions"]["a8w8"]["model"]
+    model.pop("path")
+    model.update(uri=HTTPS, sha256=SHA, bytes=len(BODY))
+    record = parse_records(data).get("rnnoise")
+    assert inventory_row(record)["hosting"] == ["git-lfs", "https:example.com"]
+    path = record.fetch("a8w8", cache=tmp_path, anonymous=True)
+    assert path == tmp_path / SHA / "model.tflite" and path.read_bytes() == BODY
+    assert server.urls == [HTTPS]
+    assert record.fetch("a8w8", cache=tmp_path) == path and server.urls == [HTTPS]
+    path.write_bytes(b"corrupted!!")
+    assert record.fetch("a8w8", cache=tmp_path).read_bytes() == BODY
+    assert server.urls == [HTTPS, HTTPS]
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "https:///model.tflite",
+        "https://example.com/",
+        "https://user:secret@example.com/m.tflite",
+        "https://example.com/m.tflite?token=secret",
+        "https://example.com/m.tflite#part",
+        "https://example.com/../m.tflite",
+        "https://example.com:bad/m.tflite",
+        "https://example.com/\nm.tflite",
+        "https://example.com/p\\m.tflite",
+    ],
+)
+def test_invalid_https_artifact_is_refused_before_cache_or_network(data, monkeypatch, tmp_path, uri):
+    server = Server(monkeypatch)
+    model = entry(data, "rnnoise")["precisions"]["a8w8"]["model"]
+    model.pop("path")
+    model.update(uri=uri)
+    with pytest.raises(ManifestError, match="HTTPS file URL"):
+        parse_records(data)
+    with pytest.raises(FetchError, match="HTTPS file URL"):
+        fetch_file(artifact(uri), cache=tmp_path)
+    assert server.urls == [] and list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("sha", "size"),
+    [(None, len(BODY)), ("not-a-sha", len(BODY)), (SHA, None), (SHA, 0), (SHA, True)],
+)
+def test_https_requires_identity_even_when_constructed_directly(monkeypatch, tmp_path, sha, size):
+    server = Server(monkeypatch)
+    with pytest.raises(FetchError, match="require a valid SHA-256"):
+        fetch_file(FileRef(HTTPS, sha, size), cache=tmp_path)
+    assert server.urls == [] and list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("body", [b"tampered!!!", b"short"])
+def test_https_mismatching_bytes_never_enter_cache(monkeypatch, tmp_path, body):
+    Server(monkeypatch, body)
+    with pytest.raises(FetchError):
+        fetch_file(artifact(HTTPS), cache=tmp_path)
+    assert not [p for p in tmp_path.rglob("*") if p.is_file()]
 
 
 def test_installed_revision_and_checkout(monkeypatch, tmp_path):

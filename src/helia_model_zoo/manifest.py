@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlsplit
 
 if TYPE_CHECKING:
     from .golden import GoldenData
@@ -62,6 +63,32 @@ def parse_hf(uri: str) -> HfLocation:
     return HfLocation(kind, match["repo"], match["revision"], match["path"])
 
 
+def https_path(uri: str) -> str:
+    """Validate an anonymous HTTPS file URL and return its relative file path.
+
+    Queries, fragments, credentials and dot-led path components are not supported.
+    The file's content is pinned separately by its SHA-256 and byte size.
+    """
+    try:
+        url = urlsplit(uri)
+        valid = (
+            uri.startswith("https://")
+            and url.hostname
+            and url.port != 0
+            and url.username is None
+            and url.password is None
+            and not url.query
+            and not url.fragment
+            and not any(c.isspace() or ord(c) < 32 or c == "\\" for c in uri)
+            and _PATH.fullmatch(url.path.removeprefix("/"))
+        )
+    except ValueError:
+        valid = False
+    if not valid:
+        raise ValueError("expected an HTTPS file URL without credentials, query or fragment")
+    return url.path.removeprefix("/")
+
+
 class ManifestError(ValueError):
     """A record does not follow record@1."""
 
@@ -69,7 +96,8 @@ class ManifestError(ValueError):
 @dataclass(frozen=True)
 class FileRef:
     """A file: ``lfs://`` or ``repo://`` (an artifact or a text file in this repository, by
-    repository path) or ``hf://`` (a Hugging Face file at a pinned revision)."""
+    repository path), ``hf://`` (a Hugging Face file at a pinned revision), or
+    ``https://`` (an upstream artifact pinned by hash and size)."""
 
     uri: str
     sha256: str | None = None
@@ -81,7 +109,7 @@ class FileRef:
 
     @property
     def path(self) -> str:
-        return self.uri.split("://", 1)[1]
+        return https_path(self.uri) if self.scheme == "https" else self.uri.split("://", 1)[1]
 
     @property
     def in_repository(self) -> bool:
@@ -299,13 +327,16 @@ def _sha256(value: Any, where: str) -> str:
 
 
 def _file(data: dict[str, Any], where: str, model_id: str, artifact: bool) -> FileRef:
-    """A file given as ``path`` (relative to the model directory) or ``uri`` (``hf://``), not both."""
+    """A relative ``path`` or a pinned ``uri``, not both."""
     if ("path" in data) == ("uri" in data):
         raise ManifestError(f"{where}: give exactly one of path or uri")
     if "uri" in data:
         uri = _string(data["uri"], f"{where}.uri")
         try:
-            parse_hf(uri)
+            if uri.startswith("https://") and artifact:
+                https_path(uri)
+            else:
+                parse_hf(uri)
         except ValueError as error:
             raise ManifestError(f"{where}.uri: {error}") from None
     else:

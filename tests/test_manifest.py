@@ -78,8 +78,8 @@ CASES = {
     "bad sha256": (lambda e: PRECISION(e)["model"].update(sha256="ABC"), "sha256"),
     "path and uri": (lambda e: PRECISION(e)["model"].update(uri=HF), "exactly one of path or uri"),
     "neither path nor uri": (lambda e: PRECISION(e)["model"].pop("path"), "exactly one of path or uri"),
-    "https uri": (
-        lambda e: (PRECISION(e)["model"].pop("path"), PRECISION(e)["model"].update(uri="https://x/m.tflite")),
+    "http uri": (
+        lambda e: (PRECISION(e)["model"].pop("path"), PRECISION(e)["model"].update(uri="http://x/m.tflite")),
         "hf://",
     ),
     "unpinned hf uri": (
