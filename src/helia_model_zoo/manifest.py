@@ -106,6 +106,8 @@ class FileRef:
 
     def validate(self) -> None:
         """Check a direct reference before its path or identity selects cache files."""
+        if not isinstance(self.uri, str) or "://" not in self.uri:
+            raise ValueError("expected a string source URI with a scheme:// prefix")
         if self.scheme == "https":
             https_path(self.uri)
         elif self.scheme == "hf":

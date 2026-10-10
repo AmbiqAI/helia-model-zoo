@@ -783,3 +783,13 @@ def test_cli_reports_overlay_enumeration_failure(monkeypatch, capsys, error):
     monkeypatch.setenv("HELIA_ZOO_OVERLAY", "hf://datasets/Example/models@" + "a" * 40 + "/")
     assert main(["list"]) == 1
     assert "listing failed" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("uri", ["repo", "lfs", "hf", "https", None, False, 1])
+def test_direct_source_requires_string_uri_with_scheme(monkeypatch, tmp_path, uri):
+    server = Server(monkeypatch)
+    cache = tmp_path / "fresh-cache"
+    with pytest.raises(FetchError, match="source URI"):
+        fetch_file(FileRef(uri), cache=cache, revision=COMMIT)
+    assert not cache.exists()
+    assert server.urls == server.hf == []
