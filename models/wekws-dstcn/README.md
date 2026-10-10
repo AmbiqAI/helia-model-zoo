@@ -8,6 +8,10 @@ Neural-only DSTCN checkpoint f9ceaede7fbf4735b4b575afca39165841fecc06bcfd29e3e02
 
 Unknown model-weight redistribution terms: no public graph mirror or default public catalog admission. Metadata is readable; graph bytes remain a named supplied local source pending hosting/rights, or at their pinned original publisher. This temporary intake is not part of default packaged `records()` and is not a retrievable `zoo://` catalog entry. Unknown weight terms do not imply the publisher's upstream architecture is private. No metrics or quality claim is inherited.
 
+## Pinned original source companion
+
+The `upstream` field binds the retained original checkpoint: ModelScope `thuduj12/kws_wenwen_dstcn@795b3afd3bfa458a22130a29e16bc460b2b3682c`, `avg_30.pt`, SHA256 `f9ceaede7fbf4735b4b575afca39165841fecc06bcfd29e3e0238915049c4697`,1187499bytes. This is a checkpoint identity, not a hosted selected TFLite graph. The prior publisher download used a query-bearing ModelScope API URL; the normal HTTPS `FileRef` rejects query URLs, so no supported anonymous checkpoint fetch is asserted. Reproduction needs external fbank/CMVN preparation, the neural-only fullcache source transform, exact cache and feature calibration, converter environment and weight terms. Retain the selected graph's complete ordered IO/individual quantizers and existing score/state failures; the old CMVN-containing graph remains held. No export, score qualification or streaming acceptance is claimed.
+
 ## Complete diagnostic IO
 
 Load the checkout’s `intake-records` parent directory with existing `load_manifest(checkout / "intake-records")`, select this record, then call `Record.fetch('a8w8', root=<explicit supplied data root>)`. A relative model path is resolved under `models/wekws-dstcn/a8w8/model.tflite` in that caller root. Do not treat a missing local graph as a published repository artifact.

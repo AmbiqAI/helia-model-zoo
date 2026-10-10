@@ -57,5 +57,11 @@
         }
       ]
     }
+  },
+  "upstream": {
+    "repo": "https://github.com/fschmid56/EfficientAT",
+    "revision": "a425fdce92572e602a1d5634799bd9f1f2efa806",
+    "path": "README.md",
+    "sha256": "835966ffa1fdac56361fa5b8a9a1c07a60689a87e2961cdf6a4f2ee7a6467358"
   }
 }

@@ -74,5 +74,11 @@
         }
       ]
     }
+  },
+  "upstream": {
+    "repo": "https://modelscope.cn/models/thuduj12/kws_wenwen_dstcn",
+    "revision": "795b3afd3bfa458a22130a29e16bc460b2b3682c",
+    "path": "avg_30.pt",
+    "sha256": "f9ceaede7fbf4735b4b575afca39165841fecc06bcfd29e3e0238915049c4697"
   }
 }
