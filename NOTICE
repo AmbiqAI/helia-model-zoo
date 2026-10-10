@@ -39,7 +39,8 @@ HeartKit selected trained weights and derived A8W8 graphs, BSD-3-Clause
 64cd51b3e1d82c4a325ae2097fe245fc839dea36):
   - models/heartkit-seg  trained ECG segmentation, derived from seg-4-tcn-sm
   - models/heartkit-arr  trained ECG arrhythmia, derived from arr-4-eff-sm
-  Preserve the upstream BSD notice and Ambiq attribution. See each model card
+  The applicable upstream BSD notice is carried at
+  licenses/HeartKit-BSD-3-Clause.txt. Preserve it and Ambiq attribution. See each model card
   for checkpoint hashes, conversion and calibration boundaries.
 
 compressionKIT PPG 4x encoder, Ambiq Model Weights License

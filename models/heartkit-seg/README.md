@@ -12,4 +12,4 @@ The checkpoint and selected graph bind weight lineage. Synthetic diagnostic inpu
 
 Tier: exact selected graph and complete IO metadata, prepared for the existing repository Git LFS route. The local graph is staged alongside its record. Hosted retrieval is pending publication and authorized artifact transfer; this is not an available public revision reference. Use the caller's explicit checkout/root for local preparation.
 
-The trained weights are BSD-3-Clause under the retained publisher-owner declaration, matching the source repository licence. Preserve the BSD notice when redistributing artifacts and retain attribution to Ambiq. This record does not change the original dataset terms.
+The trained weights are BSD-3-Clause under the retained publisher-owner declaration, matching the source repository licence. Preserve [the upstream BSD notice](../../licenses/HeartKit-BSD-3-Clause.txt) when redistributing artifacts and retain attribution to Ambiq. This record does not change the original dataset terms.
