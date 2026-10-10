@@ -33,6 +33,17 @@ class FetchError(RuntimeError):
     """A file could not be fetched, or its bytes did not match its record."""
 
 
+class _HTTPSRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        destination = urlparse(newurl)
+        if destination.scheme != "https" or destination.username is not None or destination.password is not None:
+            raise FetchError("HTTPS download refused a non-HTTPS or credential-bearing redirect")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_opener = urllib.request.build_opener(_HTTPSRedirect())
+
+
 @cache
 def _install() -> dict:
     """This package's PEP 610 ``direct_url.json``, or an empty dict."""
@@ -101,7 +112,7 @@ def _download_url(url: str, destination: Path, limit: int | None = None) -> None
 
     Stops as soon as the body exceeds ``limit`` bytes.
     """
-    with urllib.request.urlopen(url, timeout=60) as response, destination.open("wb") as out:
+    with _opener.open(url, timeout=60) as response, destination.open("wb") as out:
         written = 0
         while chunk := response.read(_CHUNK):
             written += len(chunk)

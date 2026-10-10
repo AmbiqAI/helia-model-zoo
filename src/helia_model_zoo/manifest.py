@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 if TYPE_CHECKING:
     from .golden import GoldenData
@@ -77,10 +77,11 @@ def https_path(uri: str) -> str:
             and url.port != 0
             and url.username is None
             and url.password is None
-            and not url.query
-            and not url.fragment
+            and "?" not in uri
+            and "#" not in uri
             and not any(c.isspace() or ord(c) < 32 or c == "\\" for c in uri)
             and _PATH.fullmatch(url.path.removeprefix("/"))
+            and _PATH.fullmatch(unquote(url.path.removeprefix("/"), errors="strict"))
         )
     except ValueError:
         valid = False

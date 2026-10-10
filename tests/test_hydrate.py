@@ -220,6 +220,11 @@ def test_https_record_fetches_and_revalidates_cached_artifact(data, monkeypatch,
         "https://user:secret@example.com/m.tflite",
         "https://example.com/m.tflite?token=secret",
         "https://example.com/m.tflite#part",
+        "https://example.com/m.tflite?",
+        "https://example.com/m.tflite#",
+        "https://example.com/%2e%2e/m.tflite",
+        "https://example.com/%2E/m.tflite",
+        "https://example.com/p%2f../m.tflite",
         "https://example.com/../m.tflite",
         "https://example.com:bad/m.tflite",
         "https://example.com/\nm.tflite",
@@ -257,6 +262,20 @@ def test_https_mismatching_bytes_never_enter_cache(monkeypatch, tmp_path, body):
     assert not [p for p in tmp_path.rglob("*") if p.is_file()]
 
 
+@pytest.mark.parametrize("url", ["http://example.com/model.tflite", "https://user:secret@example.com/model.tflite"])
+def test_https_redirect_refuses_downgrade_or_credentials(url):
+    request = hydrate.urllib.request.Request(HTTPS)
+    with pytest.raises(FetchError, match="refused a non-HTTPS or credential-bearing redirect"):
+        hydrate._HTTPSRedirect().redirect_request(request, None, 302, "Found", {}, url)
+
+
+def test_https_redirect_allows_anonymous_https_cdn():
+    request = hydrate.urllib.request.Request(HTTPS)
+    target = "https://cdn.example.com/model.tflite?signature=abc"
+    redirected = hydrate._HTTPSRedirect().redirect_request(request, None, 302, "Found", {}, target)
+    assert redirected.full_url == target
+
+
 def test_installed_revision_and_checkout(monkeypatch, tmp_path):
     monkeypatch.setattr(hydrate, "_install", lambda: {"url": "file:///x", "vcs_info": {"commit_id": COMMIT}})
     assert zoo.revision() == COMMIT and hydrate.local_checkout() is None
@@ -289,6 +308,23 @@ def test_overlay_joins_the_packaged_records(monkeypatch, tmp_path, data):
     resolved = zoo.resolve("zoo://private-vad/a8w8")
     assert resolved.model.read_bytes() == BODY and resolved.golden.read_bytes() == BODY
     assert server.hf[0][0] == "Example/models"
+
+
+@pytest.mark.parametrize("location", ["local", "hf"])
+def test_overlay_preserves_hf_only_private_source_boundary(monkeypatch, tmp_path, data, location):
+    from helia_model_zoo import overlay
+
+    root = _overlay(tmp_path, data)
+    path = root / "models/private-vad/record.json"
+    document = json.loads(path.read_text())
+    document["precisions"]["a8w8"]["model"]["uri"] = HTTPS
+    path.write_text(json.dumps(document))
+    source = root
+    if location == "hf":
+        source = "hf://datasets/Example/private-records@" + "a" * 40
+        monkeypatch.setattr(overlay, "_hf_records", lambda where, options: parse_records({"private-vad": document}))
+    with pytest.raises(ManifestError, match="give every file as an hf:// URI"):
+        zoo.load_overlay(source)
 
 
 def test_overlay_may_not_reuse_a_packaged_id(monkeypatch, tmp_path, data):
@@ -614,7 +650,7 @@ def test_download_stops_past_the_expected_size(monkeypatch, tmp_path):
         def __exit__(self, *exc):
             return False
 
-    monkeypatch.setattr(hydrate.urllib.request, "urlopen", lambda url, timeout: Endless())
+    monkeypatch.setattr(hydrate._opener, "open", lambda url, timeout: Endless())
     with pytest.raises(FetchError, match="more than the expected 11 bytes"):
         fetch_file(artifact(LFS), revision=COMMIT)
     assert [p for p in (tmp_path / "cache").rglob("*") if p.is_file()] == []
@@ -625,7 +661,7 @@ def test_transport_errors_become_fetch_errors(monkeypatch, error):
     def failing(url, timeout):
         raise error
 
-    monkeypatch.setattr(hydrate.urllib.request, "urlopen", failing)
+    monkeypatch.setattr(hydrate._opener, "open", failing)
     with pytest.raises(FetchError, match="could not download https://media.githubusercontent.com/"):
         fetch_file(artifact(LFS), revision=COMMIT)
 
