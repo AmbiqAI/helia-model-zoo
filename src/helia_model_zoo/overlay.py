@@ -54,12 +54,15 @@ def _hf_records(location: str, options: dict) -> Manifest:
         from huggingface_hub import HfApi
     except ImportError as error:
         raise ManifestError("an hf:// overlay needs huggingface_hub: install helia-model-zoo[hf]") from error
-    files = HfApi().list_repo_files(
-        where.repo_id,
-        repo_type=where.repo_type,
-        revision=where.revision,
-        token=False if options.get("anonymous") else None,
-    )
+    try:
+        files = HfApi().list_repo_files(
+            where.repo_id,
+            repo_type=where.repo_type,
+            revision=where.revision,
+            token=False if options.get("anonymous") else None,
+        )
+    except Exception as error:  # The SDK exposes multiple transport and authentication error types.
+        raise ManifestError(f"overlay: could not list {location}: {type(error).__name__}: {error}") from error
     documents = {}
     for name in files:
         parts = name.split("/")

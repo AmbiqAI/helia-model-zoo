@@ -176,8 +176,10 @@ def test_hf_without_huggingface_hub_names_the_extra(monkeypatch):
     ],
 )
 def test_unpinned_or_malformed_hf_uri_is_refused(data, uri):
-    entry(data, "rnnoise")["precisions"]["a8w8"]["model"]["uri"] = uri
-    with pytest.raises(ManifestError):
+    model = entry(data, "rnnoise")["precisions"]["a8w8"]["model"]
+    model.pop("path")
+    model["uri"] = uri
+    with pytest.raises(ManifestError, match="expected hf://"):
         parse_records(data)
 
 
@@ -695,3 +697,89 @@ def test_cli_fetch_names_the_precision(monkeypatch, tmp_path, data, capsys):
     capsys.readouterr()
     assert main(["fetch", "private-vad", "--precision", "a16w8"]) == 0
     assert capsys.readouterr().out.strip().endswith("wide.tflite")
+
+
+@pytest.mark.parametrize("uri", ["repo:///outside.txt", "repo://../outside.txt", "lfs://models/../model.tflite"])
+def test_direct_repository_ref_is_validated_before_cache_or_transport(monkeypatch, tmp_path, uri):
+    server = Server(monkeypatch)
+    cache = tmp_path / "fresh-cache"
+    with pytest.raises(FetchError, match="path"):
+        fetch_file(artifact(uri), cache=cache, revision=COMMIT)
+    assert not cache.exists()
+    assert server.urls == []
+
+
+def test_direct_hash_cannot_select_an_absolute_cache_directory(monkeypatch, tmp_path):
+    server = Server(monkeypatch)
+    outside = tmp_path / "outside-hash"
+    cache = tmp_path / "fresh-cache"
+    with pytest.raises(FetchError, match="sha256"):
+        fetch_file(FileRef(LFS, str(outside), len(BODY)), cache=cache, revision=COMMIT)
+    assert not outside.exists()
+    assert not cache.exists()
+    assert server.urls == []
+
+
+@pytest.mark.parametrize("size", [0, -1, True])
+def test_direct_source_size_is_validated_before_cache(monkeypatch, tmp_path, size):
+    server = Server(monkeypatch)
+    cache = tmp_path / "fresh-cache"
+    with pytest.raises(FetchError, match="bytes"):
+        fetch_file(FileRef(LFS, SHA, size), cache=cache, revision=COMMIT)
+    assert not cache.exists()
+    assert server.urls == []
+
+
+def test_unpinned_direct_hf_ref_cannot_use_warm_cache(monkeypatch, tmp_path):
+    server = Server(monkeypatch)
+    cache = tmp_path / "cache"
+    cached = cache / SHA / "model.tflite"
+    cached.parent.mkdir(parents=True)
+    cached.write_bytes(BODY)
+    with pytest.raises(FetchError, match="expected hf://"):
+        fetch_file(artifact("hf://Example/models@main/model.tflite"), cache=cache)
+    assert cached.read_bytes() == BODY
+    assert server.urls == server.hf == []
+
+
+def test_cli_reports_directory_record_as_source_failure(tmp_path, capsys):
+    from helia_model_zoo.cli import main
+
+    models = tmp_path / "models"
+    (models / "bad" / "record.json").mkdir(parents=True)
+    assert main(["--models", str(models), "list"]) == 1
+    assert "record.json" in capsys.readouterr().err
+
+
+def test_cli_reports_cache_file_as_source_failure(data, monkeypatch, tmp_path, capsys):
+    from helia_model_zoo.cli import main
+
+    server = Server(monkeypatch)
+    models = tmp_path / "models"
+    (models / "rnnoise").mkdir(parents=True)
+    record = entry(data, "rnnoise")
+    record["precisions"]["a8w8"]["model"].update(sha256=SHA, bytes=len(BODY))
+    (models / "rnnoise" / "record.json").write_text(json.dumps(record))
+    cache = tmp_path / "not-a-cache-directory"
+    cache.write_text("existing file")
+    monkeypatch.setenv("HELIA_ZOO_CACHE", str(cache))
+    monkeypatch.setenv("HELIA_ZOO_REVISION", COMMIT)
+    assert main(["--models", str(models), "fetch", "rnnoise", "--precision", "a8w8"]) == 1
+    assert str(cache) in capsys.readouterr().err
+    assert cache.read_text() == "existing file"
+    assert server.urls == []
+
+
+@pytest.mark.parametrize("error", [OSError("listing failed"), RuntimeError("listing failed")])
+def test_cli_reports_overlay_enumeration_failure(monkeypatch, capsys, error):
+    from helia_model_zoo.cli import main
+
+    Server(monkeypatch)
+
+    def failed_listing(self, *args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(sys.modules["huggingface_hub"].HfApi, "list_repo_files", failed_listing)
+    monkeypatch.setenv("HELIA_ZOO_OVERLAY", "hf://datasets/Example/models@" + "a" * 40 + "/")
+    assert main(["list"]) == 1
+    assert "listing failed" in capsys.readouterr().err
