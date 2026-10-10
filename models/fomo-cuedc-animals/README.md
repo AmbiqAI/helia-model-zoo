@@ -6,14 +6,14 @@ Selected artifact SHA256 `23449b2890a4afedbcfbcc4ad11810f70c6dd5fdb3da23beb0aad0
 
 {"basis": "Retained MODEL-SOURCE.json and exact published trained.tflite", "status": "publisher_declared_trained"}
 
-Unknown model-weight redistribution terms: no public graph mirror or default public catalog admission. Metadata is readable; the original trained graph stays at its pinned publisher, without a repository mirror. This source-only record reads the original checksum-pinned publisher artifact. Its metadata can be discovered by default records(); unknown weight terms still block mirroring and public benchmark admission. Unknown weight terms do not imply the publisher's upstream architecture is private. No metrics or quality claim is inherited.
+Unknown model-weight redistribution terms: no public graph mirror or public benchmark admission. Metadata is readable; the original trained graph stays at its pinned publisher, without a repository mirror. This source-only record reads the original checksum-pinned publisher artifact. Its metadata can be discovered by default records(); unknown weight terms still block mirroring and public benchmark admission. Unknown weight terms do not imply the publisher's upstream architecture is private. No metrics or quality claim is inherited.
 
 ## Complete diagnostic IO
 
-Load this directory with existing `load_manifest(path)`, select this record, then call `Record.fetch('a8w8', root=<explicit supplied data root>)`. A relative model path is resolved under `models/fomo-cuedc-animals/a8w8/model.tflite` in that caller root. Do not treat a missing local graph as a published repository artifact.
+Use default `get("fomo-cuedc-animals")`, or load the checkout’s `models` parent with `load_manifest(checkout / "models")`. `Record.fetch("a8w8", cache=<caller cache>, anonymous=True)` retrieves the checksum-pinned original publisher HTTPS artifact. HTTPS resolution does not use a supplied local `root`; a separate local graph must be bound by its direct Artifact descriptor. No repository graph mirror is supplied.
 
 The companion `fixtures/fomo-cuedc-animals/io.npz` contains `input_i` and `output_i` in graph order. Restore every supplied input, including all saved cache/state, before each fixed-step Invoke and capture all outputs. Outputs are diagnostic allocations, not reference goldens. No golden field is supplied. The selected NPZ is separately checksum-bound by the caller's standard Artifact descriptor. No numerical/task/streaming qualification or new export is claimed.
 
-Existing source limits: No default catalog/managed exact artifact hosting; separate weight terms remain unresolved.
+Existing source limits: Metadata is in the default catalog; the graph stays at its original publisher, without managed mirror hosting. Separate model-weight terms remain unresolved.
 
 Publisher source: CUEDC animals FOMO trained FlatBuffer at43c55f1c. Selected graph is the same original23449b2890a4, not a newly converted derivative. The full16×16×5output heatmap is retained. Source weights are declared trained by the publisher; separate original checkpoint and weight redistribution terms are not bound. Resolve this source record at its exact repository revision and retain the publisher artifact checksum.

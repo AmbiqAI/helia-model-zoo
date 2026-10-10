@@ -174,3 +174,12 @@ def test_repository_records_parse():
         assert manifest.get(name).precision("a8w8").golden is None
     for name in ("heartkit-seg", "heartkit-arr"):
         assert set(manifest.get(name).precisions) == {"a8w8", "a16w8", "fp16", "fp32"}
+
+
+def test_repository_intake_cards_use_standard_card_reader():
+    intake = load_manifest(REPO / "intake-records")
+    default = load_manifest(REPO / "models")
+    assert len(intake.records) == 17
+    assert not ({r.id for r in intake.records} & {r.id for r in default.records})
+    for record in intake.records:
+        assert record.card(root=REPO) == REPO / "models" / record.id / "README.md"

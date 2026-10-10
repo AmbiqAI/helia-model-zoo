@@ -10,7 +10,7 @@ Unknown model-weight redistribution terms: no public graph mirror or default pub
 
 ## Complete diagnostic IO
 
-Load this directory with existing `load_manifest(path)`, select this record, then call `Record.fetch('a8w8', root=<explicit supplied data root>)`. A relative model path is resolved under `models/e2a2-clean-speech-op4/a8w8/model.tflite` in that caller root. Do not treat a missing local graph as a published repository artifact.
+Load the checkout’s `intake-records` parent directory with existing `load_manifest(checkout / "intake-records")`, select this record, then call `Record.fetch('a8w8', root=<explicit supplied data root>)`. A relative model path is resolved under `models/e2a2-clean-speech-op4/a8w8/model.tflite` in that caller root. Do not treat a missing local graph as a published repository artifact.
 
 No complete saved fixture is bound for this selected graph. Its INT8 output lacks a quantizer, so no initialization or scale is invented and the existing source-preparation refusal remains. No golden field is supplied. This metadata does not admit benchmark execution or establish numerical/task/streaming qualification.
 

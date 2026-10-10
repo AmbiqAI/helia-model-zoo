@@ -10,7 +10,7 @@ Unknown model-weight redistribution terms: no public graph mirror or default pub
 
 ## Complete diagnostic IO
 
-Load this directory with existing `load_manifest(path)`, select this record, then call `Record.fetch('a8w8', root=<explicit supplied data root>)`. A relative model path is resolved under `models/mcunet-in1/a8w8/model.tflite` in that caller root. Do not treat a missing local graph as a published repository artifact.
+Load the checkout’s `intake-records` parent directory with existing `load_manifest(checkout / "intake-records")`, select this record, then call `Record.fetch('a8w8', root=<explicit supplied data root>)`. A relative model path is resolved under `models/mcunet-in1/a8w8/model.tflite` in that caller root. Do not treat a missing local graph as a published repository artifact.
 
 The companion `fixtures/mcunet-in1/io.npz` contains `input_i` and `output_i` in graph order. Restore every supplied input, including all saved cache/state, before each fixed-step Invoke and capture all outputs. Outputs are diagnostic allocations, not reference goldens. No golden field is supplied. The selected NPZ is separately checksum-bound by the caller's standard Artifact descriptor. No numerical/task/streaming qualification or new export is claimed.
 

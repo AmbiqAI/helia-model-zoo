@@ -32,7 +32,7 @@ This table documents the existing selected families; it is not another authorita
 | `heartkit-arr` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
 | `sleepkit-apnea` | temporary repository-only intake; named local Artifact or original publisher | Exact selected graph redistribution/managed hosting unresolved; default public catalog admission pending |
 | `compressionkit-ppg-encoder` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
-| `microwakeword-okay-nabu` | default source record; artifact at repository LFS or original publisher | New reviewed-head/LFS publication pending; exact transform script unbound; frontend/task/streaming qualification remains separate |
+| `microwakeword-okay-nabu` | default source record; artifact at repository LFS or original publisher | New reviewed-head/LFS publication pending; exact transform source retained; portable generator packaging pending; frontend/task/streaming qualification remains separate |
 | `speech-to-intent-micro` | temporary repository-only intake; named local Artifact or original publisher | Exact selected graph redistribution/managed hosting unresolved; default public catalog admission pending |
 | `gtcrn-official-stream-dns3` | held | No normal pinned zoo record for selected graph; Selected artifact redistribution/license binding not recorded here; Current BENCH execution catalog has no exact selected graph entry |
 | `fastenhancer-t` | held | No normal pinned zoo record for selected graph; Selected artifact redistribution/license binding not recorded here; Current BENCH execution catalog has no exact selected graph entry |
@@ -42,7 +42,7 @@ This table documents the existing selected families; it is not another authorita
 | `wekws-dstcn` | temporary repository-only intake; named local Artifact or original publisher | Exact selected graph redistribution/managed hosting unresolved; default public catalog admission pending |
 | `compressionkit-ecg-prior` | default source record; artifact at repository LFS or original publisher | weight terms unknown; no mirror/public benchmark admission; source metadata/typed diagnostic initialization supplied |
 | `sleepkit-stage` | temporary repository-only intake; named local Artifact or original publisher | Exact selected graph redistribution/managed hosting unresolved; default public catalog admission pending |
-| `nnid-tflm` | temporary repository-only intake; named local Artifact or original publisher | nnid-tflm: state pair 0 (serving_default_input_3:0 <- StatefulPartitionedCall:2): dtype or zero point differs |
+| `nnid-tflm` | temporary repository-only intake; named local Artifact or original publisher | Both feedback pairs have untied quantizers; pair0 zero-point mismatch and both exact-carry scale refusals retained |
 | `dtln-tflm` | default source record; artifact at repository LFS or original publisher | Weight redistribution terms unknown; four internal mutable-state initialization/fixture still missing |
 | `mobilenetv2-035-96` | temporary repository-only intake; named local Artifact or original publisher | Exact selected graph redistribution/managed hosting unresolved; default public catalog admission pending |
 | `sanotts-heartnano` | shelved | No normal pinned zoo record for selected graph; Selected artifact redistribution/license binding not recorded here; No portable selected graph pin; retained original source asset is separate |
