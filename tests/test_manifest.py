@@ -13,7 +13,7 @@ from helia_model_zoo.manifest import ManifestError, load_manifest, packaged_mode
 def test_records_hold_the_v1_corpus():
     v1 = json.loads((REPO / "corpus-manifest-v1.json").read_text())
     models = {p.model.path: p for r in zoo.records() for p in r.precisions.values()}
-    assert (len(zoo.records()), len(v1["entries"])) == (10, 9)
+    assert (len(zoo.records()), len(v1["entries"])) == (14, 9)
     for item in v1["entries"]:
         assert models[item["model"]].model.sha256 == item["model_sha256"]
     assert all(r.visibility == "public" for r in zoo.records())
@@ -78,8 +78,8 @@ CASES = {
     "bad sha256": (lambda e: PRECISION(e)["model"].update(sha256="ABC"), "sha256"),
     "path and uri": (lambda e: PRECISION(e)["model"].update(uri=HF), "exactly one of path or uri"),
     "neither path nor uri": (lambda e: PRECISION(e)["model"].pop("path"), "exactly one of path or uri"),
-    "https uri": (
-        lambda e: (PRECISION(e)["model"].pop("path"), PRECISION(e)["model"].update(uri="https://x/m.tflite")),
+    "http uri": (
+        lambda e: (PRECISION(e)["model"].pop("path"), PRECISION(e)["model"].update(uri="http://x/m.tflite")),
         "hf://",
     ),
     "unpinned hf uri": (
@@ -168,4 +168,4 @@ def test_hf_artifacts_and_cards_are_accepted(data):
 
 
 def test_repository_records_parse():
-    assert len(parse_records(PACKAGED).records) == 10
+    assert len(parse_records(PACKAGED).records) == 14

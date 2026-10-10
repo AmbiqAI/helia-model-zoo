@@ -177,11 +177,19 @@ Files are fetched as follows:
 - `hf://` sources (`hf://[datasets/]<org>/<repo>@<40-hex commit>/<path>`) need
   the `hf` extra and use huggingface_hub's own login (`HF_TOKEN` or
   `hf auth login`).
+- An artifact may give a direct `https://` upstream file URL in its record's
+  `uri`, together with its SHA-256 and positive byte size. It uses the same
+  verified cache without mirroring the upstream file. URLs with credentials,
+  queries, fragments or dot-led path components are refused; cards still use
+  repository paths or pinned `hf://` references. A source URL or a successful
+  fetch does not establish redistribution rights or task accuracy.
 - Every model, golden or other file with a sha256 is checked for size and
   sha256 before it enters the cache (`HELIA_ZOO_CACHE`, default
   `~/.cache/helia-model-zoo`), and checked again on every fetch. A card, a record
   read at a revision, or an overlay record has no sha256 and is pinned by its
   revision instead.
+
+For supplied upstream records, see [Use an upstream model without mirroring it](docs/how-to/use-upstream-model.md).
 
 ### Private records
 
@@ -202,3 +210,20 @@ and authors of every commit since `origin/main`, the index and working tree
 (including file names and symlink targets), the branch name, or the extra text
 files. Names that the records at `origin/main` also use are public and are not
 reported.
+
+### Upstream source records
+
+[`dtln-tflm`](models/dtln-tflm/README.md) describes the unchanged publisher's
+A8W8 noise-suppression stage. Its standard record resolves the pinned upstream
+graph through the verified cache without mirroring weights. Its four internal
+states, source-only tier and unresolved weight rights remain explicit; retrieval
+does not establish full-state preparation, task quality or public benchmark
+eligibility. See [direct upstream records](docs/how-to/use-upstream-model.md).
+
+The selected A8W8 [HeartKit segmentation](models/heartkit-seg/README.md),
+[HeartKit arrhythmia](models/heartkit-arr/README.md) and modified fixed-batch
+[compressionKIT PPG encoder](models/compressionkit-ppg-encoder/README.md)
+records bind trained sources, complete IO and applicable weight terms. Graphs
+use the existing Git LFS layout; hosted retrieval is pending publication and
+artifact transfer. compressionKIT production deployment is limited to Ambiq
+silicon. Local files are not proof of portable remote retrieval.

@@ -21,7 +21,7 @@ from importlib import metadata
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
 
-from .manifest import FileRef, parse_hf
+from .manifest import _SHA256, FileRef, https_path, parse_hf
 
 REPOSITORY = "AmbiqAI/helia-model-zoo"
 LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
@@ -31,6 +31,17 @@ _REVISION = re.compile(r"[0-9a-f]{40}")
 
 class FetchError(RuntimeError):
     """A file could not be fetched, or its bytes did not match its record."""
+
+
+class _HTTPSRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        destination = urlparse(newurl)
+        if destination.scheme != "https" or destination.username is not None or destination.password is not None:
+            raise FetchError("HTTPS download refused a non-HTTPS or credential-bearing redirect")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_opener = urllib.request.build_opener(_HTTPSRedirect())
 
 
 @cache
@@ -101,7 +112,7 @@ def _download_url(url: str, destination: Path, limit: int | None = None) -> None
 
     Stops as soon as the body exceeds ``limit`` bytes.
     """
-    with urllib.request.urlopen(url, timeout=60) as response, destination.open("wb") as out:
+    with _opener.open(url, timeout=60) as response, destination.open("wb") as out:
         written = 0
         while chunk := response.read(_CHUNK):
             written += len(chunk)
@@ -136,9 +147,12 @@ def _download(ref: FileRef, destination: Path, commit: str | None, anonymous: bo
     if ref.scheme == "hf":
         _download_hf(ref.uri, destination, anonymous)
         return
-    if not ref.in_repository:
-        raise FetchError(f"{ref.uri}: unsupported source; files come from this repository or hf://")
-    url = _url(ref, commit)
+    if ref.scheme == "https":
+        url = ref.uri
+    elif ref.in_repository:
+        url = _url(ref, commit)
+    else:
+        raise FetchError(f"{ref.uri}: unsupported source; use this repository, hf:// or pinned https://")
     try:
         _download_url(url, destination, ref.bytes)
     except (OSError, http.client.HTTPException, ValueError) as error:
@@ -180,6 +194,18 @@ def fetch_file(
     Raises:
         FetchError: If the file cannot be found or downloaded, or its bytes do not match.
     """
+    if ref.scheme == "https":
+        try:
+            https_path(ref.uri)
+        except ValueError as error:
+            raise FetchError(str(error)) from None
+        if (
+            not isinstance(ref.sha256, str)
+            or not _SHA256.fullmatch(ref.sha256)
+            or type(ref.bytes) is not int
+            or ref.bytes <= 0
+        ):
+            raise FetchError("HTTPS artifacts require a valid SHA-256 and positive byte size")
     if ref.in_repository:
         if root is None and revision is None:
             root = local_checkout()

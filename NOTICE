@@ -33,3 +33,28 @@ Derived from third-party models (conversion source and license TODO(verify)):
   - models/dfnet2   DeepFilterNet2, https://github.com/Rikorose/DeepFilterNet,
                     MIT OR Apache-2.0, Copyright (c) 2021 Hendrik Schröter
                     (licenses/DeepFilterNet-MIT.txt)
+
+HeartKit selected trained weights and derived A8W8 graphs, BSD-3-Clause
+(retained publisher-owner weights declaration; upstream HeartKit revision
+64cd51b3e1d82c4a325ae2097fe245fc839dea36):
+  - models/heartkit-seg  trained ECG segmentation, derived from seg-4-tcn-sm
+  - models/heartkit-arr  trained ECG arrhythmia, derived from arr-4-eff-sm
+  The applicable upstream BSD notice is carried at
+  licenses/HeartKit-BSD-3-Clause.txt. Preserve it and Ambiq attribution. See each model card
+  for checkpoint hashes, conversion and calibration boundaries.
+
+compressionKIT PPG 4x encoder, Ambiq Model Weights License
+(models/compressionkit-ppg-encoder/LICENSE-MODEL-WEIGHTS.md),
+Copyright (c) 2026 Ambiq Micro, Inc.:
+  - models/compressionkit-ppg-encoder  modified fixed-batch trained INT8 encoder
+  Production deployment is restricted to Ambiq silicon. Other-hardware
+  evaluation is permitted for eventual Ambiq deployment. Retain the full
+  weight notice, modified-version marking and required result attribution.
+  Source revision: Ambiq/compressionkit-ppg-4x-v1.0@8e3b465983808d50d99799df6135aaffe68029ff.
+
+DTLN publisher metadata and source-only reference:
+  - models/dtln-tflm  Cadence trained noise-suppression stage distributed by
+    tensorflow/tflite-micro@3f787dcff5c4693f3436a65aff1b268538a07bdb.
+  The publisher repository uses Apache-2.0; separate weight rights remain
+  unverified and the record's weight SPDX is null. We do not mirror this
+  graph or grant new weight rights.

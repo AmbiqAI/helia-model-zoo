@@ -1,0 +1,57 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "heartkit-seg",
+  "title": "HeartKit ECG segmentation",
+  "task": "ecg-segmentation",
+  "domain": "biosignal",
+  "visibility": "public",
+  "license": {
+    "spdx": "BSD-3-Clause"
+  },
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://github.com/AmbiqAI/heartkit",
+    "revision": "64cd51b3e1d82c4a325ae2097fe245fc839dea36",
+    "path": "results/seg-4-tcn-sm/model.keras",
+    "sha256": "80481fc0140e92f6783f9f59f41c4e88563c802299f98e6d22480647a27fb031"
+  },
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "1d32489a846bad80a9473a76ab403331568cf757cd629813939dab6bd734ae0b",
+        "bytes": 30840
+      },
+      "inputs": [
+        {
+          "name": "args_0",
+          "shape": [
+            1,
+            256,
+            1
+          ],
+          "dtype": "int8",
+          "scale": 0.05661790817975998,
+          "zero_point": -6
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            256,
+            4
+          ],
+          "dtype": "int8",
+          "scale": 0.1276094615459442,
+          "zero_point": 26
+        }
+      ]
+    }
+  }
+}

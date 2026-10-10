@@ -92,7 +92,7 @@ def load_overlay(location: str | Path, **options) -> Manifest:
     else:
         overlay = load_manifest(Path(location) / MODELS)
     for record in overlay.records:
-        if any(ref.in_repository for ref in record.files()):
+        if any(ref.scheme != "hf" for ref in record.files()):
             raise ManifestError(f"overlay record {record.id}: give every file as an hf:// URI, not a path")
     return overlay
 

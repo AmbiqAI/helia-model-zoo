@@ -1,0 +1,59 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "compressionkit-ppg-encoder",
+  "title": "compressionKIT PPG 4x encoder",
+  "task": "signal-compression",
+  "domain": "biosignal",
+  "visibility": "public",
+  "license": {
+    "spdx": "LicenseRef-Ambiq-Model-Weights"
+  },
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://huggingface.co/Ambiq/compressionkit-ppg-4x-v1.0",
+    "revision": "8e3b465983808d50d99799df6135aaffe68029ff",
+    "path": "encoder_int8.tflite",
+    "sha256": "5f1e0e62be756a3f486609fd98a8cf18d491187b76f8158e1394a1186981274b"
+  },
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "e570dc9a4b43df106c62983612fbe59ff1d39a31dc296b18c09411d07586cdae",
+        "bytes": 28944
+      },
+      "inputs": [
+        {
+          "name": "serving_default_enc_in:0",
+          "shape": [
+            1,
+            1,
+            320,
+            1
+          ],
+          "dtype": "int8",
+          "scale": 0.11237426102161407,
+          "zero_point": 20
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall_1:0",
+          "shape": [
+            1,
+            1,
+            80,
+            16
+          ],
+          "dtype": "int8",
+          "scale": 0.042130157351493835,
+          "zero_point": -18
+        }
+      ]
+    }
+  }
+}

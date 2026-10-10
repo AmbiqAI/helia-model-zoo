@@ -27,7 +27,7 @@ exclude = ["*.tflite", "*.npz", "*.h5", "*.md"]
 sources = { "src" = "", "models" = "helia_model_zoo/models" }
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "models/*/record.json", "models/*/README.md", "/LICENSE", "/NOTICE", "/README.md", "/pyproject.toml"]
+include = ["src", "models/*/record.json", "models/*/README.md", "models/*/LICENSE-MODEL-WEIGHTS.md", "/licenses", "/LICENSE", "/NOTICE", "/README.md", "/pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
