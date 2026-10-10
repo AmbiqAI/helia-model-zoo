@@ -210,3 +210,12 @@ and authors of every commit since `origin/main`, the index and working tree
 (including file names and symlink targets), the branch name, or the extra text
 files. Names that the records at `origin/main` also use are public and are not
 reported.
+
+### Upstream source records
+
+[`dtln-tflm`](models/dtln-tflm/README.md) describes the unchanged publisher's
+A8W8 noise-suppression stage. Its standard record resolves the pinned upstream
+graph through the verified cache without mirroring weights. Its four internal
+states, source-only tier and unresolved weight rights remain explicit; retrieval
+does not establish full-state preparation, task quality or public benchmark
+eligibility. See [direct upstream records](docs/how-to/use-upstream-model.md).

@@ -1,0 +1,57 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "dtln-tflm",
+  "title": "DTLN noise-suppression stage",
+  "domain": "audio",
+  "task": "noise-suppression",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://github.com/tensorflow/tflite-micro",
+    "revision": "3f787dcff5c4693f3436a65aff1b268538a07bdb",
+    "path": "tensorflow/lite/micro/examples/dtln/dtln_noise_suppression.tflite",
+    "sha256": "91e94316d1a4747dd3bddcf58423927e97213913a9b4210edca3f9402b2ff0fe"
+  },
+  "io": {
+    "streaming": "internal_state",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "uri": "https://raw.githubusercontent.com/tensorflow/tflite-micro/3f787dcff5c4693f3436a65aff1b268538a07bdb/tensorflow/lite/micro/examples/dtln/dtln_noise_suppression.tflite",
+        "sha256": "91e94316d1a4747dd3bddcf58423927e97213913a9b4210edca3f9402b2ff0fe",
+        "bytes": 372720
+      },
+      "inputs": [
+        {
+          "name": "serving_default_input_7:0",
+          "shape": [
+            1,
+            1,
+            257
+          ],
+          "dtype": "int8",
+          "scale": 0.06857891380786896,
+          "zero_point": -128
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall:0",
+          "shape": [
+            1,
+            1,
+            257
+          ],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        }
+      ]
+    }
+  }
+}

@@ -36,7 +36,7 @@ and content pin control retrieval. Existing `hf://` references continue to
 require a full commit and use Hugging Face's normal authentication.
 
 If a reference golden exists, retain its real runtime/resolver and source
-metadata and fetch it with `record.golden()`. Otherwise omit `golden` rather
+metadata and fetch it with `record.golden("a8w8")`. Otherwise omit `golden` rather
 than declaring an output allocation to be a reference. Save complete input
 initialization and all output extents separately in the benchmark fixture;
 stateful fixtures must supply every state input and define resets/carry
