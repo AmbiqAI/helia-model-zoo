@@ -63,3 +63,13 @@ The microWakeWord Okay Nabu explicit-state derivative preserves the Apache-2.0
 model-weight/manifests notice in licenses/microWakeWord-NOTICE.txt and licence in
 licenses/microWakeWord-Apache-2.0.txt. Its cache/score modifications are documented
 in models/microwakeword-okay-nabu/README.md.
+
+SleepKit stage publisher metadata and source-only reference:
+  - models/sleepkit-stage  exact ss-5-tcn-sm graph at the original public S3
+    publisher, checksum and size constrained. Model-weight terms remain
+    unverified and the record's SPDX is null; no graph is mirrored or
+    redistribution grant added.
+  The separately supplied diagnostic NPZ contains a synthetic real-zero input
+  and saved outputs, not a reference golden or a numerical/task qualification.
+  It is not distributed in this repository. See the model card for its exact
+  identity and remaining portability gap.

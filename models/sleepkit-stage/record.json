@@ -16,7 +16,7 @@
   "precisions": {
     "a8w8": {
       "model": {
-        "path": "a8w8/model.tflite",
+        "uri": "https://ambiqai-model-zoo.s3-us-west-2.amazonaws.com/sleepkit/stage/ss-5-tcn-sm/v1.0/model.tflite",
         "sha256": "c3e37e74c0ffc21b054744d65f2f845f45a9f3257badb15dffe9e6e9371df7d8",
         "bytes": 91664
       },
