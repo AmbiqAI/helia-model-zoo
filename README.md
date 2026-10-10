@@ -219,3 +219,11 @@ graph through the verified cache without mirroring weights. Its four internal
 states, source-only tier and unresolved weight rights remain explicit; retrieval
 does not establish full-state preparation, task quality or public benchmark
 eligibility. See [direct upstream records](docs/how-to/use-upstream-model.md).
+
+The selected A8W8 [HeartKit segmentation](models/heartkit-seg/README.md),
+[HeartKit arrhythmia](models/heartkit-arr/README.md) and modified fixed-batch
+[compressionKIT PPG encoder](models/compressionkit-ppg-encoder/README.md)
+records bind trained sources, complete IO and applicable weight terms. Graphs
+use the existing Git LFS layout; hosted retrieval is pending publication and
+artifact transfer. compressionKIT production deployment is limited to Ambiq
+silicon. Local files are not proof of portable remote retrieval.

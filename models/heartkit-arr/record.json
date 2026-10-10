@@ -1,0 +1,56 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "heartkit-arr",
+  "title": "HeartKit ECG arrhythmia",
+  "task": "ecg-arrhythmia",
+  "domain": "biosignal",
+  "visibility": "public",
+  "license": {
+    "spdx": "BSD-3-Clause"
+  },
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://github.com/AmbiqAI/heartkit",
+    "revision": "64cd51b3e1d82c4a325ae2097fe245fc839dea36",
+    "path": "results/arr-4-eff-sm/model.keras",
+    "sha256": "7d570be4e1f4911e38534945dd98fbd5001bb35ec3c72da8233d801df354548e"
+  },
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "75128e080d1ff33cf90dc985a25b5857e939225f0458bc8845d249de252423df",
+        "bytes": 76592
+      },
+      "inputs": [
+        {
+          "name": "args_0",
+          "shape": [
+            1,
+            800,
+            1
+          ],
+          "dtype": "int8",
+          "scale": 0.08081524074077606,
+          "zero_point": -13
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "int8",
+          "scale": 0.04768543690443039,
+          "zero_point": -20
+        }
+      ]
+    }
+  }
+}
