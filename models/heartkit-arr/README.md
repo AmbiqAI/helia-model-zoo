@@ -16,7 +16,7 @@ The trained weights are BSD-3-Clause under the retained publisher-owner declarat
 
 ## Trained parent retrieval
 
-The trained checkpoint is available at [https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-4-eff-sm/latest/model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-4-eff-sm/latest/model.keras), 583939 bytes, SHA256 `7d570be4e1f4911e38534945dd98fbd5001bb35ec3c72da8233d801df354548e`. This publisher `latest` URL is mutable: require the checksum and size, never accept a replacement automatically. Architecture/configuration are separately pinned to HeartKit `64cd51b3e1d82c4a325ae2097fe245fc839dea36`; the checkpoint is not a versioned GitHub `results/` file. Exact byte regeneration also requires the original calibration inputs and converter environment.
+The trained checkpoint is available at [https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-4-eff-sm/v1.0/model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-4-eff-sm/v1.0/model.keras), 583939 bytes, SHA256 `7d570be4e1f4911e38534945dd98fbd5001bb35ec3c72da8233d801df354548e`. This publisher version-named path is not proven immutable: require the checksum and size, never accept a replacement automatically. Architecture/configuration are separately pinned to HeartKit `64cd51b3e1d82c4a325ae2097fe245fc839dea36`; the checkpoint is not a versioned GitHub `results/` file. Exact byte regeneration also requires the original calibration inputs and converter environment.
 
 ## Diagnostic initialization for additional precisions
 

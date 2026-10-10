@@ -10,6 +10,8 @@ The HeartKit records expose A8W8, actual A16W8, native Float16 and Float32 graph
 
 FOMO and the ECG prior use their original checksum-pinned publisher artifact without a graph mirror; unresolved weight terms remain null. The ECG prior preserves the complete 256-token INT32 context and all 256×256 INT8 logits, with mixed INT8/Float32 internals. microWakeWord preserves all six explicit cache pairs and signed score mapping; its pinned model-weight licence and modification notices are supplied. Frontend/task policies remain separate from the model's full typed IO.
 
+SleepKit stage also uses its exact original publisher graph through the normal installed catalog. Its [card](../../models/sleepkit-stage/README.md) binds a separately supplied diagnostic NPZ that remains outside the catalog's reference goldens. [Source hosting](source-hosting.md) lists the reusable HeartKit parents, different publisher graph exports and exact missing publication conditions. Public retrieval does not change unknown weight terms.
+
 ## Named supplied sources and diagnostic IO
 
 [Temporary intake records](../../intake-records/README.md) use the same record@1 parser and explicit `load_manifest(checkout / "intake-records")`. They are repository-only metadata and excluded from the default installed catalog. The consumer must explicitly bind each record or named Artifact and its remaining availability condition; do not silently ignore the directory or count it as fully migrated hosting.
@@ -41,7 +43,7 @@ This table documents the existing selected families; it is not another authorita
 | `rnnoise` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
 | `wekws-dstcn` | temporary repository-only intake; named local Artifact or original publisher | Exact selected graph redistribution/managed hosting unresolved; default public catalog admission pending |
 | `compressionkit-ecg-prior` | default source record; artifact at repository LFS or original publisher | weight terms unknown; no mirror/public benchmark admission; source metadata/typed diagnostic initialization supplied |
-| `sleepkit-stage` | temporary repository-only intake; named local Artifact or original publisher | Exact selected graph redistribution/managed hosting unresolved; default public catalog admission pending |
+| `sleepkit-stage` | default source record; exact original S3 publisher graph, diagnostic NPZ separately supplied | Weight/checkpoint terms, public diagnostic fixture and immutable publisher placement unresolved; no mirror or numerical/task acceptance |
 | `nnid-tflm` | temporary repository-only intake; named local Artifact or original publisher | Both feedback pairs have untied quantizers; pair0 zero-point mismatch and both exact-carry scale refusals retained |
 | `dtln-tflm` | default source record; artifact at repository LFS or original publisher | Weight redistribution terms unknown; four internal mutable-state initialization/fixture still missing |
 | `mobilenetv2-035-96` | temporary repository-only intake; named local Artifact or original publisher | Exact selected graph redistribution/managed hosting unresolved; default public catalog admission pending |

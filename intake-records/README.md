@@ -34,7 +34,6 @@ Schema/read/fetch success does not override preparation gates. NNID retains its 
 | `mobileone-s0-native96` | [Record](mobileone-s0-native96/record.json), [source card](../models/mobileone-s0-native96/README.md) |
 | `nnid-tflm` | [Record](nnid-tflm/record.json), [source card](../models/nnid-tflm/README.md) |
 | `sleepkit-apnea` | [Record](sleepkit-apnea/record.json), [source card](../models/sleepkit-apnea/README.md) |
-| `sleepkit-stage` | [Record](sleepkit-stage/record.json), [source card](../models/sleepkit-stage/README.md) |
 | `speech-to-intent-micro` | [Record](speech-to-intent-micro/record.json), [source card](../models/speech-to-intent-micro/README.md) |
 | `wekws-dstcn` | [Record](wekws-dstcn/record.json), [source card](../models/wekws-dstcn/README.md) |
 | `yamnet256-fsd5` | [Record](yamnet256-fsd5/record.json), [source card](../models/yamnet256-fsd5/README.md) |
