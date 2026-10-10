@@ -1,0 +1,51 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "e2a2-clean-speech-op4",
+  "title": "e2a2-clean-speech-op4",
+  "domain": "audio",
+  "task": "speech-encoding",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "4a417a9c0db824b3db68e89be2c085d474e77c3a10cacbe49936e6f6318b3e14",
+        "bytes": 5240
+      },
+      "inputs": [
+        {
+          "name": "serving_default_waveform:0",
+          "shape": [
+            1,
+            1,
+            256
+          ],
+          "dtype": "int8",
+          "scale": 0.007843137718737125,
+          "zero_point": -1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "PartitionedCall:0",
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "int8",
+          "scale": null,
+          "zero_point": null
+        }
+      ]
+    }
+  }
+}

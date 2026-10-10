@@ -1,0 +1,51 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "yamnet256-fsd5",
+  "title": "yamnet256-fsd5",
+  "domain": "audio",
+  "task": "audio-event-classification",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "33649e4ff8e5c26c0733e3b85e5dc4519ba0607590cd1d716c8e1fae91b781e1",
+        "bytes": 183960
+      },
+      "inputs": [
+        {
+          "name": "serving_default_input_layer:0",
+          "shape": [
+            1,
+            64,
+            96,
+            1
+          ],
+          "dtype": "int8",
+          "scale": 0.05554727464914322,
+          "zero_point": 38
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall_1:0",
+          "shape": [
+            1,
+            5
+          ],
+          "dtype": "float32",
+          "scale": null,
+          "zero_point": null
+        }
+      ]
+    }
+  }
+}

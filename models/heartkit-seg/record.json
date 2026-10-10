@@ -11,9 +11,7 @@
   "card": "README.md",
   "upstream": {
     "repo": "https://github.com/AmbiqAI/heartkit",
-    "revision": "64cd51b3e1d82c4a325ae2097fe245fc839dea36",
-    "path": "results/seg-4-tcn-sm/model.keras",
-    "sha256": "80481fc0140e92f6783f9f59f41c4e88563c802299f98e6d22480647a27fb031"
+    "revision": "64cd51b3e1d82c4a325ae2097fe245fc839dea36"
   },
   "io": {
     "streaming": "stateless",
@@ -50,6 +48,105 @@
           "dtype": "int8",
           "scale": 0.1276094615459442,
           "zero_point": 26
+        }
+      ]
+    },
+    "a16w8": {
+      "model": {
+        "path": "a16w8/model.tflite",
+        "sha256": "91cabb0a57ea1b66c7de78d03e52e94eaa89c4149eb3ed0afa88f0a597d2c626",
+        "bytes": 35488
+      },
+      "inputs": [
+        {
+          "name": "args_0",
+          "shape": [
+            1,
+            256,
+            1
+          ],
+          "dtype": "int16",
+          "scale": 0.00022957331384532154,
+          "zero_point": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            256,
+            4
+          ],
+          "dtype": "int16",
+          "scale": 0.0006008672062307596,
+          "zero_point": 0
+        }
+      ]
+    },
+    "fp16": {
+      "model": {
+        "path": "fp16/model.tflite",
+        "sha256": "8104511d2fc2587aa31aea938139c92ce672c24ba840bcae4ebe5b8078a08685",
+        "bytes": 34000
+      },
+      "inputs": [
+        {
+          "name": "args_0",
+          "shape": [
+            1,
+            256,
+            1
+          ],
+          "dtype": "float16",
+          "scale": null,
+          "zero_point": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            256,
+            4
+          ],
+          "dtype": "float16",
+          "scale": null,
+          "zero_point": null
+        }
+      ]
+    },
+    "fp32": {
+      "model": {
+        "path": "fp32/model.tflite",
+        "sha256": "e72790735c1bf673a485f7ae79b0a45ab614f4ebb32525eb3d37e72cee8e73f0",
+        "bytes": 40964
+      },
+      "inputs": [
+        {
+          "name": "args_0",
+          "shape": [
+            1,
+            256,
+            1
+          ],
+          "dtype": "float32",
+          "scale": null,
+          "zero_point": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            256,
+            4
+          ],
+          "dtype": "float32",
+          "scale": null,
+          "zero_point": null
         }
       ]
     }

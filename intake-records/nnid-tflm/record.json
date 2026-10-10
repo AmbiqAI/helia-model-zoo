@@ -1,0 +1,100 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "nnid-tflm",
+  "title": "nnid-tflm",
+  "domain": "audio",
+  "task": "speaker-embedding",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "explicit_state",
+    "state_pairs": [
+      {
+        "in": "serving_default_input_3:0",
+        "out": "StatefulPartitionedCall:2"
+      },
+      {
+        "in": "serving_default_input_2:0",
+        "out": "StatefulPartitionedCall:1"
+      }
+    ]
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "uri": "https://raw.githubusercontent.com/AmbiqAI/nnid_tflm/bd8d31c6b912f7f4ca57aade8addaa72fafa2ceb/nnid_8x8.tflite",
+        "sha256": "06a439de41f80ce1e959a1f0d98277d07bb05adf413d4cdc69c1eb810145927d",
+        "bytes": 120480
+      },
+      "inputs": [
+        {
+          "name": "serving_default_input_1:0",
+          "shape": [
+            1,
+            6,
+            40,
+            1
+          ],
+          "dtype": "int8",
+          "scale": 1.0038880109786987,
+          "zero_point": 0
+        },
+        {
+          "name": "serving_default_input_3:0",
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "int8",
+          "scale": 0.00784103199839592,
+          "zero_point": 0
+        },
+        {
+          "name": "serving_default_input_2:0",
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "int8",
+          "scale": 513.9821166992188,
+          "zero_point": -1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall:2",
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "int8",
+          "scale": 0.015637898817658424,
+          "zero_point": -1
+        },
+        {
+          "name": "StatefulPartitionedCall:0",
+          "shape": [
+            1,
+            64
+          ],
+          "dtype": "int8",
+          "scale": 0.021957609802484512,
+          "zero_point": -3
+        },
+        {
+          "name": "StatefulPartitionedCall:1",
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "int8",
+          "scale": 0.0075570158660411835,
+          "zero_point": -1
+        }
+      ]
+    }
+  }
+}

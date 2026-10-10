@@ -1,0 +1,62 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "mixtoken-relu-imu",
+  "title": "mixtoken-relu-imu",
+  "domain": "sensors",
+  "task": "activity-classification",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "2ac17889ad241142b20e5f99811a31d51a3028191404a67792425d07b8815cd5",
+        "bytes": 277976
+      },
+      "inputs": [
+        {
+          "name": "imu_filterbank",
+          "shape": [
+            1,
+            1,
+            100,
+            24
+          ],
+          "dtype": "int8",
+          "scale": 0.034324683248996735,
+          "zero_point": -8
+        },
+        {
+          "name": "statistical_tokens",
+          "shape": [
+            1,
+            6,
+            59
+          ],
+          "dtype": "int8",
+          "scale": 0.02925771474838257,
+          "zero_point": -2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            6
+          ],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        }
+      ]
+    }
+  }
+}

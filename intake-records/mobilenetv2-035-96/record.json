@@ -1,0 +1,51 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "mobilenetv2-035-96",
+  "title": "MobileNetV2 alpha0.35 native-trained96 Keras",
+  "domain": "vision",
+  "task": "image-classification",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "1240fe2ded0e62be38336a578b01b39f968db698c174d42f536e6e0185f044ec",
+        "bytes": 1939312
+      },
+      "inputs": [
+        {
+          "name": "input",
+          "shape": [
+            1,
+            96,
+            96,
+            3
+          ],
+          "dtype": "int8",
+          "scale": 0.007843137718737125,
+          "zero_point": -1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            1000
+          ],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        }
+      ]
+    }
+  }
+}

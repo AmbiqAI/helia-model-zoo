@@ -1,0 +1,56 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "compressionkit-ecg-prior",
+  "title": "compressionKIT ECG categorical prior (mixed INT8/FP32)",
+  "domain": "health",
+  "task": "categorical-token-prior",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "upstream": {
+    "repo": "https://huggingface.co/Ambiq/compressionkit-ecg-8x-v1.0",
+    "revision": "548a82529fc10075c31f19ab1ed8c09dfb2e58f4",
+    "path": "prior_int8.tflite",
+    "sha256": "1b90f6a5d43cd6e1714d558313ec21c1cbc2f86e16f52d220040ab44f09ecefa"
+  },
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "uri": "https://huggingface.co/Ambiq/compressionkit-ecg-8x-v1.0/resolve/548a82529fc10075c31f19ab1ed8c09dfb2e58f4/prior_int8.tflite",
+        "sha256": "1b90f6a5d43cd6e1714d558313ec21c1cbc2f86e16f52d220040ab44f09ecefa",
+        "bytes": 240280
+      },
+      "inputs": [
+        {
+          "name": "serving_default_tokens:0",
+          "shape": [
+            1,
+            256
+          ],
+          "dtype": "int32",
+          "scale": null,
+          "zero_point": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall_1:0",
+          "shape": [
+            1,
+            256,
+            256
+          ],
+          "dtype": "int8",
+          "scale": 0.05708871781826019,
+          "zero_point": -12
+        }
+      ]
+    }
+  }
+}

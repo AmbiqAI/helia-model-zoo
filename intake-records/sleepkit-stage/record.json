@@ -1,0 +1,51 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "sleepkit-stage",
+  "title": "sleepKIT five-stage classification",
+  "domain": "health",
+  "task": "sleep-stage-classification",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "c3e37e74c0ffc21b054744d65f2f845f45a9f3257badb15dffe9e6e9371df7d8",
+        "bytes": 91664
+      },
+      "inputs": [
+        {
+          "name": "serving_default_args_0:0",
+          "shape": [
+            1,
+            240,
+            14
+          ],
+          "dtype": "int8",
+          "scale": 0.2590899169445038,
+          "zero_point": -12
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall:0",
+          "shape": [
+            1,
+            240,
+            5
+          ],
+          "dtype": "int8",
+          "scale": 0.07468176633119583,
+          "zero_point": 32
+        }
+      ]
+    }
+  }
+}

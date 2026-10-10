@@ -1,0 +1,62 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "speech-to-intent-micro",
+  "title": "Speech-to-Intent-Micro Wio default100x13",
+  "domain": "audio",
+  "task": "speech-to-intent",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "d77011e4b68027b41cd1fd3f87d5d28eb3c4a516b2de4050da74a941fb59bb7c",
+        "bytes": 40128
+      },
+      "inputs": [
+        {
+          "name": "main_input",
+          "shape": [
+            1,
+            100,
+            13,
+            1
+          ],
+          "dtype": "int8",
+          "scale": 0.1589411050081253,
+          "zero_point": -65
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            6
+          ],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        },
+        {
+          "name": "Identity_1",
+          "shape": [
+            1,
+            2,
+            17
+          ],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        }
+      ]
+    }
+  }
+}

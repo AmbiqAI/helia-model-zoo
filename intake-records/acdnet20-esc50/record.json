@@ -1,0 +1,51 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "acdnet20-esc50",
+  "title": "acdnet20-esc50",
+  "domain": "audio",
+  "task": "audio-event-classification",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "72f96b3475f5011132f9ab696854f3803228f217e0b56e45a96a9506d8fb3c5e",
+        "bytes": 156288
+      },
+      "inputs": [
+        {
+          "name": "input_1",
+          "shape": [
+            1,
+            1,
+            30225,
+            1
+          ],
+          "dtype": "int8",
+          "scale": 0.018705090507864952,
+          "zero_point": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            50
+          ],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        }
+      ]
+    }
+  }
+}

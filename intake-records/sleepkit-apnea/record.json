@@ -1,0 +1,51 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "sleepkit-apnea",
+  "title": "sleepKIT apnea segmentation",
+  "domain": "health",
+  "task": "sleep-apnea-detection",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "779e1b0dbedfdd4f124c6cb5bb136c287c50bdefd11339eb655c804cc88e5eb1",
+        "bytes": 41056
+      },
+      "inputs": [
+        {
+          "name": "serving_default_inputs:0",
+          "shape": [
+            1,
+            600,
+            5
+          ],
+          "dtype": "int8",
+          "scale": 0.03677554428577423,
+          "zero_point": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall_1:0",
+          "shape": [
+            1,
+            600,
+            2
+          ],
+          "dtype": "int8",
+          "scale": 0.009191914461553097,
+          "zero_point": 19
+        }
+      ]
+    }
+  }
+}

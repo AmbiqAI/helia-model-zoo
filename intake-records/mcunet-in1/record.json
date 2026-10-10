@@ -1,0 +1,51 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "mcunet-in1",
+  "title": "MCUNet-in1 native96 ImageNet",
+  "domain": "vision",
+  "task": "image-classification",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "69ba5e7360f3e40e6a524726e109a9919bd6642bba594b54bfc181d3f5dda1bd",
+        "bytes": 860888
+      },
+      "inputs": [
+        {
+          "name": "input",
+          "shape": [
+            1,
+            96,
+            96,
+            3
+          ],
+          "dtype": "int8",
+          "scale": 0.007843137718737125,
+          "zero_point": -1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Reshape",
+          "shape": [
+            1,
+            1000
+          ],
+          "dtype": "int8",
+          "scale": 0.16098004579544067,
+          "zero_point": -35
+        }
+      ]
+    }
+  }
+}

@@ -11,9 +11,7 @@
   "card": "README.md",
   "upstream": {
     "repo": "https://github.com/AmbiqAI/heartkit",
-    "revision": "64cd51b3e1d82c4a325ae2097fe245fc839dea36",
-    "path": "results/arr-4-eff-sm/model.keras",
-    "sha256": "7d570be4e1f4911e38534945dd98fbd5001bb35ec3c72da8233d801df354548e"
+    "revision": "64cd51b3e1d82c4a325ae2097fe245fc839dea36"
   },
   "io": {
     "streaming": "stateless",
@@ -49,6 +47,102 @@
           "dtype": "int8",
           "scale": 0.04768543690443039,
           "zero_point": -20
+        }
+      ]
+    },
+    "a16w8": {
+      "model": {
+        "path": "a16w8/model.tflite",
+        "sha256": "dae7f312e78c8a4f65b344258d3f92ebf8a7618fa819fbd408296752fe5729c8",
+        "bytes": 87832
+      },
+      "inputs": [
+        {
+          "name": "args_0",
+          "shape": [
+            1,
+            800,
+            1
+          ],
+          "dtype": "int16",
+          "scale": 0.00034416874404996634,
+          "zero_point": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "int16",
+          "scale": 0.00021442660363391042,
+          "zero_point": 0
+        }
+      ]
+    },
+    "fp16": {
+      "model": {
+        "path": "fp16/model.tflite",
+        "sha256": "521e63b5ca20a86d2f4077f0c06c223c9c594fca01f6bb50421859908aceac47",
+        "bytes": 90312
+      },
+      "inputs": [
+        {
+          "name": "args_0",
+          "shape": [
+            1,
+            800,
+            1
+          ],
+          "dtype": "float16",
+          "scale": null,
+          "zero_point": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float16",
+          "scale": null,
+          "zero_point": null
+        }
+      ]
+    },
+    "fp32": {
+      "model": {
+        "path": "fp32/model.tflite",
+        "sha256": "9f6c276dd547c4fe649c7cb389ba45773c2ae31b439ec65695937ce5d2cb2a5c",
+        "bytes": 129972
+      },
+      "inputs": [
+        {
+          "name": "args_0",
+          "shape": [
+            1,
+            800,
+            1
+          ],
+          "dtype": "float32",
+          "scale": null,
+          "zero_point": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32",
+          "scale": null,
+          "zero_point": null
         }
       ]
     }
