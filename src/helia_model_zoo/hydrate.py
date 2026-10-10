@@ -21,7 +21,7 @@ from importlib import metadata
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
 
-from .manifest import _SHA256, FileRef, https_path, parse_hf
+from .manifest import FileRef, parse_hf
 
 REPOSITORY = "AmbiqAI/helia-model-zoo"
 LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
@@ -194,18 +194,10 @@ def fetch_file(
     Raises:
         FetchError: If the file cannot be found or downloaded, or its bytes do not match.
     """
-    if ref.scheme == "https":
-        try:
-            https_path(ref.uri)
-        except ValueError as error:
-            raise FetchError(str(error)) from None
-        if (
-            not isinstance(ref.sha256, str)
-            or not _SHA256.fullmatch(ref.sha256)
-            or type(ref.bytes) is not int
-            or ref.bytes <= 0
-        ):
-            raise FetchError("HTTPS artifacts require a valid SHA-256 and positive byte size")
+    try:
+        ref.validate()
+    except ValueError as error:
+        raise FetchError(str(error)) from None
     if ref.in_repository:
         if root is None and revision is None:
             root = local_checkout()

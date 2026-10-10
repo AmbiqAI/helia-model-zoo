@@ -58,5 +58,11 @@
         }
       ]
     }
+  },
+  "upstream": {
+    "repo": "https://github.com/AIWintermuteAI/Speech-to-Intent-Micro",
+    "revision": "7e6674117c55145d0071d39768c183e63e917479",
+    "path": "inference_code/Wio_Terminal/wio_speech_to_intent/slu_model.h",
+    "sha256": "72a7d1a11e51879eff759c7cbdd0e00b2f654a374b94658a44dfa692eaa33272"
   }
 }

@@ -4,7 +4,7 @@ Keep Zoo records, model cards, typed IO, source/rights notices and checksums in 
 
 ## Existing exact matches
 
-Prior audit anonymous ordinary GETs retrieved these exact bytes. After the version request returned AccessDenied, all further S3 calls are held, including current-key requests or delegated fetches. Reuse the saved exact matches for local draft bindings and offline controls; fresh remote acceptance is pending. The S3 `v1.0` key is a version-named path, not proof of enforced immutability. Mandatory checksums and sizes must reject replacement bytes.
+Prior anonymous ordinary GETs retrieved these exact bytes. A subsequently authorized fresh normal SleepKit stage fetch verified its selected SHA256 and size. Ordinary public current-key URLs are usable with mandatory expected hash/size verification; the specific denied versionId operation remains stopped. The HeartKit parent rows describe saved exact source evidence, not a new checkpoint fetch. The S3 `v1.0` key is a version-named path, not proof of enforced immutability. Mandatory checksums and sizes must reject replacement bytes.
 
 | Source | Existing public object | SHA256 | Bytes | Use |
 | --- | --- | --- | --- | --- |
@@ -16,7 +16,7 @@ The two HeartKit parent identities retain their existing owner weight notice and
 
 ## Normal SleepKit access
 
-After publisher access is approved and a Zoo revision containing the entry is published, the normal model fetch needs no workstation data root. This example describes the existing interface; it does not authorize a new S3 call while access is held:
+The published normal SleepKit source needs no workstation data root. Use the existing interface with checksum/size verification:
 
 ```python
 from pathlib import Path
@@ -26,9 +26,9 @@ record = get("sleepkit-stage")
 model = record.fetch("a8w8", cache=Path("cache"), anonymous=True)
 ```
 
-Use a full published repository revision for reproducible recipe metadata, for example `zoo://sleepkit-stage/a8w8@<full published revision>`. A local unpushed branch is not a remotely available reference.
+Use a full published repository revision for reproducible recipe metadata, for example `zoo://sleepkit-stage/a8w8@dff63db1c07d9a4ff77fc67c3e0040f3d5ca48a8`. A local unpushed branch is not a remotely available reference.
 
-The separately supplied diagnostic NPZ is 5076 bytes, SHA256 `b2469b3030265953eaaf09de051d0e68cf0d138ce099389924fd45820a68519c`. It holds the complete INT8 input `[1,240,14]` at its quantized real zero -12 and saved INT8 output `[1,240,5]`. The output values are diagnostics, **NOT_REFERENCE_GOLDEN**. Bind the supplied file through the consumer's existing standard Artifact path/hash/size interface. It is not distributed in the repository or wheel and has no verified public fixture URI; do not try to fetch it from a Zoo revision. The draft graph binding has no workstation-root dependency, but remote acceptance remains pending and this saved fixture is a separate source dependency.
+The separately supplied diagnostic NPZ is 5076 bytes, SHA256 `b2469b3030265953eaaf09de051d0e68cf0d138ce099389924fd45820a68519c`. It holds the complete INT8 input `[1,240,14]` at its quantized real zero -12 and saved INT8 output `[1,240,5]`. The output values are diagnostics, **NOT_REFERENCE_GOLDEN**. Bind the supplied file through the consumer's existing standard Artifact path/hash/size interface. It is not distributed in the repository or wheel and has no verified public fixture URI; do not try to fetch it from a Zoo revision. The graph binding has no workstation-root dependency. The saved fixture remains a separate optional diagnostic source; deterministic full-input preparation at the recorded quantized real zero is sufficient for a new static diagnostic condition, without treating saved outputs as goldens.
 
 record@1 exposes model/card/reference-golden files, and the existing completeness check rejects unlisted tracked NPZ artifacts. Neither a new diagnostic schema field nor a fake golden is introduced. Preserve every input and output and retain the existing named file until an approved normal publisher replacement is retrieved and consumers are repointed. Source checks do not assess predictions or establish carried-stream semantics.
 
@@ -55,12 +55,12 @@ Their existing `latest` and `v1.0` publisher exports match one another, but diff
 | HeartKit rhythm | FP32 | `9f6c276dd547c4fe649c7cb389ba45773c2ae31b439ec65695937ce5d2cb2a5c` | 129972 |
 | HeartKit rhythm | FP32 compute/FP16 storage | `2664008a180d84a031c75a7e6a439eb67610fd7d86cf1c068418b3128be9ca67` | 91416 |
 
-ADK/publisher owners can publish these eleven distinct graph identities at commit-pinned HF paths or immutable/content-addressed S3 keys, retaining the applicable weight notices and source/calibration provenance. The two FP32-compute/FP16-storage artifacts still have their existing precision-policy refusals; hosting does not make them native FP16 or eligible for execution.
+Eight native HeartKit variants are already published in the standard records at68f3b256d44067eec8582233358185db1efc5c4e; their exact graph identity does not require another transfer. Selected apnea and the two storage-only HeartKit variants still need separately admitted exact-object hosting. Preserve applicable weight notices and describe source/calibration regeneration requirements independently of artifact retrieval. The two FP32-compute/FP16-storage artifacts still have their existing precision-policy refusals; hosting does not make them native FP16 or eligible for execution.
 
-Publish checksum-bound complete diagnostic fixtures and explicit checkpoint/source/rights bindings where absent. SleepKit stage still needs its exact 5076-byte diagnostic NPZ at an approved managed source; all existing unique fixture inputs remain in their named data stores. A source-only metadata record does not override missing initialization, quantizers, private visibility, numerical or task gates elsewhere in the selected portfolio.
+Publish checksum-bound complete diagnostic fixtures and explicit checkpoint/source/rights bindings where absent. A consumer choosing the saved SleepKit diagnostic condition still needs its exact5076-byte NPZ; a new deterministic typed-zero diagnostic condition needs only the complete record IO. Existing saved fixture inputs remain in their named data stores. A source-only metadata record does not override missing initialization, quantizers, private visibility, numerical or task gates elsewhere in the selected portfolio.
 
 ## Access limits
 
 The public HeartKit and SleepKit current-key listings contain model, Keras checkpoint, configuration, history and metrics objects. They do not list separate record@1 files, typed NPZ companions or model-weight licence/checksum manifests. Two bounded public HF searches under publisher Ambiq for HeartKit/SleepKit returned no repositories; private repositories and other publisher names were not audited.
 
-The first explicit S3 version-ID GET returned `HTTP403 AccessDenied: Access Denied`. All further S3 calls are held: no current-key request, omitted-version retry, delegated fetch or alternate account/host. The existing HTTPS resolver also rejects query-bearing URLs. Only prior saved exact bytes support the local draft source bindings and offline controls; no new remote acceptance, version-ID or immutability claim is made. Permissions and the resolver remain unchanged. Keep existing repository/local payloads until a future explicitly approved publisher migration has passed normal fresh-cache retrieval and consumer repointing. No upload, history rewrite or payload removal is part of this change.
+The first explicit S3 version-ID GET returned `HTTP403 AccessDenied: Access Denied`. That versionId operation remains stopped: no versionId retry, delegated retry, alternate account or permission change. Ordinary public current-key URLs are allowed only with their expected SHA256 and size. The existing HTTPS resolver also rejects query-bearing URLs. The ordinary SleepKit source has a new authorized exact-byte fetch proof; it does not establish version-ID access or publisher immutability. Permissions and the resolver remain unchanged. Keep existing repository/local payloads until a future explicitly approved publisher migration has passed normal fresh-cache retrieval and consumer repointing. No upload, history rewrite or payload removal is part of this change.

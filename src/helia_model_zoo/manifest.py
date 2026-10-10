@@ -104,6 +104,31 @@ class FileRef:
     sha256: str | None = None
     bytes: int | None = None
 
+    def validate(self) -> None:
+        """Check a direct reference before its path or identity selects cache files."""
+        if not isinstance(self.uri, str) or "://" not in self.uri:
+            raise ValueError("expected a string source URI with a scheme:// prefix")
+        if self.scheme == "https":
+            https_path(self.uri)
+        elif self.scheme == "hf":
+            parse_hf(self.uri)
+        elif self.in_repository:
+            if not _PATH.fullmatch(self.path):
+                raise ValueError("expected a repository path without absolute or dot-led components")
+        else:
+            raise ValueError(f"{self.uri}: unsupported source; use this repository, hf:// or pinned https://")
+        try:
+            if self.sha256 is not None:
+                _sha256(self.sha256, "FileRef.sha256")
+            if self.bytes is not None:
+                _int(self.bytes, "FileRef.bytes", 1)
+            if self.scheme == "https" and (self.sha256 is None or self.bytes is None):
+                raise ManifestError("missing HTTPS identity")
+        except ManifestError:
+            if self.scheme == "https":
+                raise ValueError("HTTPS artifacts require a valid SHA-256 and positive byte size") from None
+            raise
+
     @property
     def scheme(self) -> str:
         return self.uri.split("://", 1)[0]
@@ -334,9 +359,7 @@ def _file(data: dict[str, Any], where: str, model_id: str, artifact: bool) -> Fi
     if "uri" in data:
         uri = _string(data["uri"], f"{where}.uri")
         try:
-            if uri.startswith("https://") and artifact:
-                https_path(uri)
-            else:
+            if not (uri.startswith("hf://") or (uri.startswith("https://") and artifact)):
                 parse_hf(uri)
         except ValueError as error:
             raise ManifestError(f"{where}.uri: {error}") from None
@@ -345,9 +368,16 @@ def _file(data: dict[str, Any], where: str, model_id: str, artifact: bool) -> Fi
         if not _PATH.fullmatch(path):
             raise ManifestError(f"{where}.path: expected a path inside the model directory, got {path!r}")
         uri = f"{'lfs' if artifact else 'repo'}://{MODELS}/{model_id}/{path}"
-    if not artifact:
-        return FileRef(uri)
-    return FileRef(uri, _sha256(data["sha256"], f"{where}.sha256"), _int(data["bytes"], f"{where}.bytes", 1))
+    ref = (
+        FileRef(uri, _sha256(data["sha256"], f"{where}.sha256"), _int(data["bytes"], f"{where}.bytes", 1))
+        if artifact
+        else FileRef(uri)
+    )
+    try:
+        ref.validate()
+    except ValueError as error:
+        raise ManifestError(f"{where}.uri: {error}") from None
+    return ref
 
 
 def _artifact(value: Any, where: str, model_id: str, extra: frozenset[str] = frozenset()) -> tuple[FileRef, dict]:

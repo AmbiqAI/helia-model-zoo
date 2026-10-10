@@ -8,6 +8,10 @@ Selected artifact SHA256 `eec86846965ace27d9c153a6ec7b4c0fa614859dcc4d2fdf5ac48a
 
 Unknown model-weight redistribution terms: no public graph mirror or default public catalog admission. Metadata is readable; graph bytes remain a named supplied local source pending hosting/rights, or at their pinned original publisher. This temporary intake is not part of default packaged `records()` and is not a retrievable `zoo://` catalog entry. Unknown weight terms do not imply the publisher's upstream architecture is private. No metrics or quality claim is inherited.
 
+## Pinned original source companion
+
+The `upstream` field binds the original README at `fschmid56/EfficientAT@a425fdce92572e602a1d5634799bd9f1f2efa806`; its hash is documentation identity, not checkpoint identity. The retained trained checkpoint SHA256 is `fffd3b222d8140a4f8d408b23625d2c414b130e075f1480e3da89c8de7bd5c0b`. Reproduction needs the exact checkpoint file/byte size, complete10second normalized feature context, channel-SE source adaptation, dependency source versions, calibration tensors and converter environment. The selected record retains the original graph SHA256; the later singleton-REDUCE_MAX normalization is a different graph and is not substituted. Exact raw selected-graph transfer and weight terms remain unresolved; no new checkpoint fetch, export or execution is claimed.
+
 ## Complete diagnostic IO
 
 Load the checkout’s `intake-records` parent directory with existing `load_manifest(checkout / "intake-records")`, select this record, then call `Record.fetch('a8w8', root=<explicit supplied data root>)`. A relative model path is resolved under `models/efficientat-mn02/a8w8/model.tflite` in that caller root. Do not treat a missing local graph as a published repository artifact.

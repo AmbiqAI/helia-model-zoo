@@ -8,6 +8,10 @@ Selected artifact SHA256 `82b5d4753856dca1306af4a38a7222c84f5eacdc855891a65be595
 
 Unknown model-weight redistribution terms: no public graph mirror or default public catalog admission. Metadata is readable; graph bytes remain a named supplied local source pending hosting/rights, or at their pinned original publisher. This temporary intake is not part of default packaged `records()` and is not a retrievable `zoo://` catalog entry. Unknown weight terms do not imply the publisher's upstream architecture is private. No metrics or quality claim is inherited.
 
+## Existing A16W8 companion
+
+The same intake also contains the separately retained A16W8 graph: SHA256 `b20a450d3d11ad24a744ab269a8d139b432e7d5f64ae991adde2038d9d7b9c44`,263424bytes, at caller-root `models/microdpad-derived-fusion/a16w8/model.tflite`. Use `record.fetch('a16w8', root=supplied_root)`; its INT16 IO and per-tensor quantizers are declared separately from A8W8. This is existing random/untrained source, not a new export or trained precision claim. The separate diagnostic `fixtures/microdpad-derived-fusion/a16w8/io.npz` has SHA256 `1b3569777e819e3baf29ec1b96ebe40a97f5452720b702f8659ff520980a3b40`,7376bytes. Bind it as a caller Artifact, not a reference golden. Source/config/calibration, derivative rights and portable raw-graph transfer remain unresolved; no public graph admission is implied.
+
 ## Complete diagnostic IO
 
 Load the checkout’s `intake-records` parent directory with existing `load_manifest(checkout / "intake-records")`, select this record, then call `Record.fetch('a8w8', root=<explicit supplied data root>)`. A relative model path is resolved under `models/microdpad-derived-fusion/a8w8/model.tflite` in that caller root. Do not treat a missing local graph as a published repository artifact.

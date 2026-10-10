@@ -4,7 +4,7 @@ Selected artifact SHA256 `c3e37e74c0ffc21b054744d65f2f845f45a9f3257badb15dffe9e6
 
 ## Source, training and rights
 
-Prior audit bytes from the original publisher at [sleepkit/stage/ss-5-tcn-sm/v1.0/model.tflite](https://ambiqai-model-zoo.s3-us-west-2.amazonaws.com/sleepkit/stage/ss-5-tcn-sm/v1.0/model.tflite) match the selected SHA256 and size above. Zoo stores a draft source binding and typed IO; it does not mirror this model. Fresh remote acceptance is pending: after the S3 version request returned AccessDenied, all further S3 requests, including ordinary current-key requests and peer fetches, are held. Reuse saved exact bytes for offline checks.
+Prior audit bytes from the original publisher at [sleepkit/stage/ss-5-tcn-sm/v1.0/model.tflite](https://ambiqai-model-zoo.s3-us-west-2.amazonaws.com/sleepkit/stage/ss-5-tcn-sm/v1.0/model.tflite) match the selected SHA256 and size above. Zoo binds that original publisher object and typed IO; it does not mirror this model. A normal fresh anonymous current-key fetch verified the exact selected hash and size. Ordinary public URLs are usable with mandatory hash/size verification; the specific denied versionId request remains stopped.
 
 Model-weight redistribution terms and a separately identified trained checkpoint remain unresolved. The record's weight license is null. Public publisher access does not grant redistribution permission or benchmark/task qualification. This is a default metadata record whose model is fetched from the publisher with mandatory SHA256 and byte-size checks; no metrics or quality claim is inherited.
 
@@ -12,7 +12,7 @@ The `v1.0` pathname does not establish object immutability. The resolver rejects
 
 ## Complete diagnostic IO
 
-Only after publisher access is approved and a Zoo revision containing this record is published, use `get('sleepkit-stage').fetch('a8w8', cache=Path('cache'), anonymous=True)` or a pinned `zoo://sleepkit-stage/a8w8@<full published revision>` reference. These are the existing consumer interfaces, not authorization for a new S3 request. The draft HTTPS binding has no workstation graph-root dependency; fresh remote acceptance remains pending.
+Use `get('sleepkit-stage').fetch('a8w8', cache=Path('cache'), anonymous=True)` or the published pinned reference `zoo://sleepkit-stage/a8w8@dff63db1c07d9a4ff77fc67c3e0040f3d5ca48a8`. The HTTPS binding has no workstation graph-root dependency and rejects any replacement with a different hash or size. Complete typed-zero diagnostic input preparation does not need a saved output fixture; keep any separately supplied NPZ diagnostic and outside reference goldens.
 
 The separately supplied companion is the existing 5076-byte diagnostic NPZ, SHA256 `b2469b3030265953eaaf09de051d0e68cf0d138ce099389924fd45820a68519c`. It contains `input_0` INT8 `[1,240,14]` and `output_0` INT8 `[1,240,5]` in graph order. Every input value is the input's quantized real zero, -12. Saved output values are diagnostics, NOT_REFERENCE_GOLDEN; no golden field is supplied. Restore the entire input for each fixed step and capture all outputs. This fixture does not represent task/streaming/numerical qualification or a new model export.
 

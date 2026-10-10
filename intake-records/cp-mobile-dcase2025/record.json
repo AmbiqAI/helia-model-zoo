@@ -47,5 +47,11 @@
         }
       ]
     }
+  },
+  "upstream": {
+    "repo": "https://github.com/CPJKU/dcase2025_task1_inference",
+    "revision": "da99d532999c8148cf3e0c7e0f9782324c04071e",
+    "path": "Schmid_CPJKU_task1/ckpts/baseline.ckpt",
+    "sha256": "399908d314b99e86b95c96edeea69de42710f23a7a0a53b2161931ed5f2425c8"
   }
 }

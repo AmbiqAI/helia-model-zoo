@@ -12,10 +12,11 @@ import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .manifest import PRECISIONS, ManifestError, Record, load_manifest, parse_hf
+from .hydrate import FetchError
+from .manifest import PRECISIONS, Manifest, ManifestError, Record, load_manifest, parse_hf
 
 
-def _manifest(args: argparse.Namespace):
+def _manifest(args: argparse.Namespace) -> Manifest:
     """``--models`` if given, else the packaged records plus any ``HELIA_ZOO_OVERLAY``."""
     if args.models is not None:
         return load_manifest(args.models)
@@ -401,6 +402,9 @@ def main(argv: list[str] | None = None) -> int:
         return args.run(args)
     except ManifestError as error:
         print(f"invalid record: {error}", file=sys.stderr)
+        return 1
+    except (FetchError, OSError) as error:
+        print(f"source error: {error}", file=sys.stderr)
         return 1
 
 

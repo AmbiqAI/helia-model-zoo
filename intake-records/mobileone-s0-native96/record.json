@@ -47,5 +47,11 @@
         }
       ]
     }
+  },
+  "upstream": {
+    "repo": "https://github.com/apple-aiml-research/ml-mobileone",
+    "revision": "3cebdf04a1524c447ab5e44a5235524f8da46f8d",
+    "path": "mobileone.py",
+    "sha256": "70b58756631dcf4ed2e5513fdc2359579421d5f342d5e0dcd89114ce823f3a80"
   }
 }
