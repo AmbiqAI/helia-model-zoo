@@ -1,0 +1,108 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "microdpad-derived-fusion",
+  "title": "microdpad-derived-fusion",
+  "domain": "sensors",
+  "task": "sensor-fusion-classification",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "82b5d4753856dca1306af4a38a7222c84f5eacdc855891a65be595e5c7015ffd",
+        "bytes": 261744
+      },
+      "inputs": [
+        {
+          "name": "imu",
+          "shape": [
+            1,
+            1,
+            150,
+            6
+          ],
+          "dtype": "int8",
+          "scale": 0.03386273980140686,
+          "zero_point": -9
+        },
+        {
+          "name": "spatial_ppg",
+          "shape": [
+            1,
+            1,
+            150,
+            16
+          ],
+          "dtype": "int8",
+          "scale": 0.034349821507930756,
+          "zero_point": -8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            7
+          ],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        }
+      ]
+    },
+    "a16w8": {
+      "model": {
+        "path": "a16w8/model.tflite",
+        "sha256": "b20a450d3d11ad24a744ab269a8d139b432e7d5f64ae991adde2038d9d7b9c44",
+        "bytes": 263424
+      },
+      "inputs": [
+        {
+          "name": "imu",
+          "shape": [
+            1,
+            1,
+            150,
+            6
+          ],
+          "dtype": "int16",
+          "scale": 0.00014090824697632343,
+          "zero_point": 0
+        },
+        {
+          "name": "spatial_ppg",
+          "shape": [
+            1,
+            1,
+            150,
+            16
+          ],
+          "dtype": "int16",
+          "scale": 0.00014110391202848405,
+          "zero_point": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            7
+          ],
+          "dtype": "int16",
+          "scale": 3.0517578125e-05,
+          "zero_point": 0
+        }
+      ]
+    }
+  }
+}

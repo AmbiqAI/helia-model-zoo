@@ -1,0 +1,9 @@
+# HeartKit ECG arrhythmia (FP32 compute / FP16 stored weights)
+
+Exact trained graph SHA256 `2664008a180d84a031c75a7e6a439eb67610fd7d86cf1c068418b3128be9ca67`, 91416 bytes. This is the separate Float32-compute graph with Float16 stored weights, not the native-Float16 graph. The standard record precision key is `fp32`; model ID preserves the distinct storage variant. All IO types/quantizers are in record.json.
+
+Trained parent [https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-4-eff-sm/latest/model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-4-eff-sm/latest/model.keras), 583939 bytes, SHA256 `7d570be4e1f4911e38534945dd98fbd5001bb35ec3c72da8233d801df354548e`; enforce hash/size at the mutable latest URL. Architecture HeartKit64cd51b3, existing converter lineage fd4dc170; exact byte regeneration needs original calibration/source environment. No new conversion performed.
+
+Model weights are BSD-3-Clause under the retained owner declaration. Preserve [the exact upstream notice](../../licenses/HeartKit-BSD-3-Clause.txt). Source data terms are separate. This temporary intake is repository-only metadata, excluded from default packaged records(). The current source signature validator refuses Float16 tensors in an fp32 precision and requires native-half compute for fp16. This actual precision-policy refusal is preserved; no schema or validator gate is changed. Exact selected graph and typed synthetic fixture are named supplied local Artifacts. Source availability does not establish task/numerical qualification.
+
+Initialize every input at realzero: floating0 or its individual quantized zero point, restore per fixed-step Invoke, capture all outputs. Diagnostic output allocations are NOT_REFERENCE_GOLDEN. No golden field is supplied. The existing A8 fixture is not reused for this different graph/dtype.

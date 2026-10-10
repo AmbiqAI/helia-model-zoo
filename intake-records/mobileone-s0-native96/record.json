@@ -1,0 +1,51 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "mobileone-s0-native96",
+  "title": "mobileone-s0-native96",
+  "domain": "vision",
+  "task": "image-classification",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "e923877b35fc26bbbb14b3607e004addbbd949056d3ed44d97880f7493a27ebe",
+        "bytes": 2363696
+      },
+      "inputs": [
+        {
+          "name": "serving_default_input:0",
+          "shape": [
+            1,
+            96,
+            96,
+            3
+          ],
+          "dtype": "int8",
+          "scale": 0.007843087427318096,
+          "zero_point": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "PartitionedCall:0",
+          "shape": [
+            1,
+            1000
+          ],
+          "dtype": "int8",
+          "scale": 0.040390029549598694,
+          "zero_point": -7
+        }
+      ]
+    }
+  }
+}

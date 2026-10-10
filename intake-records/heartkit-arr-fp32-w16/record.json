@@ -1,0 +1,54 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "title": "HeartKit ECG arrhythmia (FP32 compute / FP16 stored weights)",
+  "domain": "biosignal",
+  "task": "ecg-arrhythmia",
+  "visibility": "public",
+  "license": {
+    "spdx": "BSD-3-Clause"
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "upstream": {
+    "repo": "https://github.com/AmbiqAI/heartkit",
+    "revision": "64cd51b3e1d82c4a325ae2097fe245fc839dea36"
+  },
+  "id": "heartkit-arr-fp32-w16",
+  "precisions": {
+    "fp32": {
+      "model": {
+        "path": "fp32/model.tflite",
+        "sha256": "2664008a180d84a031c75a7e6a439eb67610fd7d86cf1c068418b3128be9ca67",
+        "bytes": 91416
+      },
+      "inputs": [
+        {
+          "name": "args_0",
+          "shape": [
+            1,
+            800,
+            1
+          ],
+          "dtype": "float32",
+          "scale": null,
+          "zero_point": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32",
+          "scale": null,
+          "zero_point": null
+        }
+      ]
+    }
+  }
+}

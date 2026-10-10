@@ -1,0 +1,225 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "microwakeword-okay-nabu",
+  "title": "microWakeWord v2 Okay Nabu",
+  "domain": "audio",
+  "task": "keyword-spotting",
+  "visibility": "public",
+  "license": {
+    "spdx": "Apache-2.0"
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "explicit_state",
+    "state_pairs": [
+      {
+        "in": "model/stream/concat/ReadVariableOp",
+        "out": "model/stream/strided_slice2"
+      },
+      {
+        "in": "model/stream_1/concat/ReadVariableOp",
+        "out": "model/stream_1/strided_slice2"
+      },
+      {
+        "in": "model/stream_2/concat/ReadVariableOp",
+        "out": "model/stream_2/strided_slice1"
+      },
+      {
+        "in": "model/stream_3/concat/ReadVariableOp",
+        "out": "model/stream_3/strided_slice1"
+      },
+      {
+        "in": "model/stream_4/concat/ReadVariableOp",
+        "out": "model/stream_4/strided_slice1"
+      },
+      {
+        "in": "model/stream_5/concat/ReadVariableOp",
+        "out": "model/stream_5/strided_slice2"
+      }
+    ]
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "21eaaa2455fcc5b6fec5803be993aab08932e04d9f1d40396d55d5043f2ea0b0",
+        "bytes": 58016
+      },
+      "inputs": [
+        {
+          "name": "serving_default_input_audio:0",
+          "shape": [
+            1,
+            3,
+            40
+          ],
+          "dtype": "int8",
+          "scale": 0.10196078568696976,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream/concat/ReadVariableOp",
+          "shape": [
+            1,
+            2,
+            1,
+            40
+          ],
+          "dtype": "int8",
+          "scale": 0.10196078568696976,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream_1/concat/ReadVariableOp",
+          "shape": [
+            1,
+            4,
+            1,
+            32
+          ],
+          "dtype": "int8",
+          "scale": 1.2743911743164062,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream_2/concat/ReadVariableOp",
+          "shape": [
+            1,
+            10,
+            1,
+            64
+          ],
+          "dtype": "int8",
+          "scale": 0.03454568237066269,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream_3/concat/ReadVariableOp",
+          "shape": [
+            1,
+            14,
+            1,
+            64
+          ],
+          "dtype": "int8",
+          "scale": 0.04087086766958237,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream_4/concat/ReadVariableOp",
+          "shape": [
+            1,
+            22,
+            1,
+            64
+          ],
+          "dtype": "int8",
+          "scale": 0.031987305730581284,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream_5/concat/ReadVariableOp",
+          "shape": [
+            1,
+            5,
+            1,
+            64
+          ],
+          "dtype": "int8",
+          "scale": 0.026271779090166092,
+          "zero_point": -128
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall:0",
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream/strided_slice2",
+          "shape": [
+            1,
+            2,
+            1,
+            40
+          ],
+          "dtype": "int8",
+          "scale": 0.10196078568696976,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream_1/strided_slice2",
+          "shape": [
+            1,
+            4,
+            1,
+            32
+          ],
+          "dtype": "int8",
+          "scale": 1.2743911743164062,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream_2/strided_slice1",
+          "shape": [
+            1,
+            10,
+            1,
+            64
+          ],
+          "dtype": "int8",
+          "scale": 0.03454568237066269,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream_3/strided_slice1",
+          "shape": [
+            1,
+            14,
+            1,
+            64
+          ],
+          "dtype": "int8",
+          "scale": 0.04087086766958237,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream_4/strided_slice1",
+          "shape": [
+            1,
+            22,
+            1,
+            64
+          ],
+          "dtype": "int8",
+          "scale": 0.031987305730581284,
+          "zero_point": -128
+        },
+        {
+          "name": "model/stream_5/strided_slice2",
+          "shape": [
+            1,
+            5,
+            1,
+            64
+          ],
+          "dtype": "int8",
+          "scale": 0.026271779090166092,
+          "zero_point": -128
+        }
+      ]
+    }
+  },
+  "upstream": {
+    "repo": "https://github.com/esphome/micro-wake-word-models",
+    "revision": "40ff33f57f8fc6ad71a75ef085abbf742495b225",
+    "path": "models/v2/okay_nabu.tflite",
+    "sha256": "0689abe1912a95a3318a0d8cb2e67bad0cbcfe3e24dd6e050c75debddfb6f891"
+  }
+}

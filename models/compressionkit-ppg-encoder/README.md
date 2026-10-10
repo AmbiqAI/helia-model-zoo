@@ -10,6 +10,6 @@ The existing benchmark companion is diagnostic full-IO allocation, not a referen
 
 ## Tier, retrieval and rights
 
-Tier: selected graph and complete IO metadata prepared for the existing repository Git LFS route. Local payload is present; hosted retrieval is pending explicit publication/artifact transfer, so no available public commit reference is advertised. The stable dynamic upstream file stays at its publisher, but does not retrieve this fixed-batch graph.
+Tier: selected graph and complete IO metadata, published through this repository's Git LFS route. The fixed-batch artifact is available at `zoo://compressionkit-ppg-encoder/a8w8@db261339e5e2a944090b8459a6eb838249bb0d93`; the normal resolver verified anonymous retrieval from an empty cache. A local checkout/root is optional. The stable dynamic upstream file stays at its publisher and remains a different graph. This source availability does not establish numerical or task qualification.
 
 Weights and modified quantized artifacts use [the retained Ambiq Model Weights License](LICENSE-MODEL-WEIGHTS.md), SHA256 `d2d5715e0b37f06a7d7b0f2638b05079d94e6815700a74f4019529651d5f8671`. It permits Ambiq-silicon production deployment, evaluation/benchmarking elsewhere for eventual Ambiq use, and redistribution with its notice and modified-version marking. Public results require attribution to Ambiq Micro, Inc. and the originating Hugging Face repository. These weight terms are separate from toolkit code and dataset terms.

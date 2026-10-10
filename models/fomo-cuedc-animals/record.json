@@ -1,0 +1,59 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "fomo-cuedc-animals",
+  "title": "fomo-cuedc-animals",
+  "domain": "vision",
+  "task": "object-detection",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "uri": "https://raw.githubusercontent.com/UEM-Stu/CUEDC-2024-Drone-code/43c55f1c14ea81d89426dd5144a520c84f34e1aa/openmv/trained.tflite",
+        "sha256": "23449b2890a4afedbcfbcc4ad11810f70c6dd5fdb3da23beb0aad0a7a47e5263",
+        "bytes": 56872
+      },
+      "inputs": [
+        {
+          "name": "serving_default_x:0",
+          "shape": [
+            1,
+            125,
+            125,
+            3
+          ],
+          "dtype": "int8",
+          "scale": 0.0034294503275305033,
+          "zero_point": -128
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall:0",
+          "shape": [
+            1,
+            16,
+            16,
+            5
+          ],
+          "dtype": "int8",
+          "scale": 0.00390625,
+          "zero_point": -128
+        }
+      ]
+    }
+  },
+  "upstream": {
+    "repo": "https://github.com/UEM-Stu/CUEDC-2024-Drone-code",
+    "revision": "43c55f1c14ea81d89426dd5144a520c84f34e1aa",
+    "path": "openmv/trained.tflite",
+    "sha256": "23449b2890a4afedbcfbcc4ad11810f70c6dd5fdb3da23beb0aad0a7a47e5263"
+  }
+}

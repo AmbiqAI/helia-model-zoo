@@ -58,3 +58,8 @@ DTLN publisher metadata and source-only reference:
   The publisher repository uses Apache-2.0; separate weight rights remain
   unverified and the record's weight SPDX is null. We do not mirror this
   graph or grant new weight rights.
+
+The microWakeWord Okay Nabu explicit-state derivative preserves the Apache-2.0
+model-weight/manifests notice in licenses/microWakeWord-NOTICE.txt and licence in
+licenses/microWakeWord-Apache-2.0.txt. Its cache/score modifications are documented
+in models/microwakeword-okay-nabu/README.md.

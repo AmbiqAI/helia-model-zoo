@@ -1,0 +1,51 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "cp-mobile-dcase2025",
+  "title": "cp-mobile-dcase2025",
+  "domain": "audio",
+  "task": "acoustic-scene-classification",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "2b5d12cd34d8df9b33cc4a46d8d5a218c721c6141092ece0830cf6fb612cbaea",
+        "bytes": 115480
+      },
+      "inputs": [
+        {
+          "name": "serving_default_input:0",
+          "shape": [
+            1,
+            256,
+            65,
+            1
+          ],
+          "dtype": "int8",
+          "scale": 0.07843087613582611,
+          "zero_point": 25
+        }
+      ],
+      "outputs": [
+        {
+          "name": "StatefulPartitionedCall:0",
+          "shape": [
+            1,
+            10
+          ],
+          "dtype": "int8",
+          "scale": 0.1374639868736267,
+          "zero_point": -32
+        }
+      ]
+    }
+  }
+}

@@ -227,3 +227,7 @@ records bind trained sources, complete IO and applicable weight terms. Graphs
 use the existing Git LFS layout; hosted retrieval is pending publication and
 artifact transfer. compressionKIT production deployment is limited to Ambiq
 silicon. Local files are not proof of portable remote retrieval.
+
+## Full portfolio sources
+
+See [reproduce selected portfolio sources](docs/how-to/reproduce-portfolio-sources.md) for normal hosted references, actual precision distinctions, complete diagnostic initialization, temporary [source-only intakes](intake-records/README.md), private/local routes and visible held/missing dispositions. Source/fixture availability is separate from numerical or task qualification.

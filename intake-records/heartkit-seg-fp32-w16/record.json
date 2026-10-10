@@ -1,0 +1,55 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "title": "HeartKit ECG segmentation (FP32 compute / FP16 stored weights)",
+  "domain": "biosignal",
+  "task": "ecg-segmentation",
+  "visibility": "public",
+  "license": {
+    "spdx": "BSD-3-Clause"
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "upstream": {
+    "repo": "https://github.com/AmbiqAI/heartkit",
+    "revision": "64cd51b3e1d82c4a325ae2097fe245fc839dea36"
+  },
+  "id": "heartkit-seg-fp32-w16",
+  "precisions": {
+    "fp32": {
+      "model": {
+        "path": "fp32/model.tflite",
+        "sha256": "642cfe5371f89d5bfffb0120f76e492faab66c238e16fe3f88be0ec35105d042",
+        "bytes": 34836
+      },
+      "inputs": [
+        {
+          "name": "args_0",
+          "shape": [
+            1,
+            256,
+            1
+          ],
+          "dtype": "float32",
+          "scale": null,
+          "zero_point": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Identity",
+          "shape": [
+            1,
+            256,
+            4
+          ],
+          "dtype": "float32",
+          "scale": null,
+          "zero_point": null
+        }
+      ]
+    }
+  }
+}

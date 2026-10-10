@@ -6,10 +6,18 @@ Selected trained A8W8 export: 30,840 bytes, SHA256 `1d32489a846bad80a9473a76ab40
 
 The trained [HeartKit source](https://github.com/AmbiqAI/heartkit/tree/64cd51b3e1d82c4a325ae2097fe245fc839dea36) checkpoint `results/seg-4-tcn-sm/model.keras` has SHA256 `80481fc0140e92f6783f9f59f41c4e88563c802299f98e6d22480647a27fb031`. This record describes its derived INT8 graph, not the Keras checkpoint. The retained export used helia-edge `fd4dc17081bb1418a972e026fa2874a57fa4fef6`, TensorFlow 2.21.0, Keras 3.15.1 and the strict INT8 converter. Calibration used the first saved 256 validation examples from the trained source; calibration data is not redistributed. No new calibration, conversion or task assessment is represented here.
 
-The checkpoint and selected graph bind weight lineage. Synthetic diagnostic input/output allocations in the benchmark are separate and are not reference goldens. No golden is supplied by this record; no numerical, task-quality, fit, runtime or timing acceptance is inherited. Other precision variants remain separate and are not supplied here.
+The checkpoint and selected graph bind weight lineage. Synthetic diagnostic input/output allocations in the benchmark are separate and are not reference goldens. No golden is supplied by this record; no numerical, task-quality, fit, runtime or timing acceptance is inherited. Additional real A16W8, native FP16 and FP32 graphs have their own IO definitions in this record. The separate FP32-compute/FP16-weight variant stays an explicit source intake because the current native-half precision validator cannot represent it.
 
 ## Tier, retrieval and rights
 
-Tier: exact selected graph and complete IO metadata, prepared for the existing repository Git LFS route. The local graph is staged alongside its record. Hosted retrieval is pending publication and authorized artifact transfer; this is not an available public revision reference. Use the caller's explicit checkout/root for local preparation.
+Tier: exact selected graph and complete IO metadata, published through this repository's Git LFS route. The record and artifact are available at `zoo://heartkit-seg/a8w8@db261339e5e2a944090b8459a6eb838249bb0d93`; the normal resolver verified anonymous retrieval from an empty cache. A local checkout/root is optional. This source availability does not establish numerical or task qualification.
 
 The trained weights are BSD-3-Clause under the retained publisher-owner declaration, matching the source repository licence. Preserve [the upstream BSD notice](../../licenses/HeartKit-BSD-3-Clause.txt) when redistributing artifacts and retain attribution to Ambiq. This record does not change the original dataset terms.
+
+## Trained parent retrieval
+
+The trained checkpoint is available at [https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-4-tcn-sm/latest/model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-4-tcn-sm/latest/model.keras), 284587 bytes, SHA256 `80481fc0140e92f6783f9f59f41c4e88563c802299f98e6d22480647a27fb031`. This publisher `latest` URL is mutable: require the checksum and size, never accept a replacement automatically. Architecture/configuration are separately pinned to HeartKit `64cd51b3e1d82c4a325ae2097fe245fc839dea36`; the checkpoint is not a versioned GitHub `results/` file. Exact byte regeneration also requires the original calibration inputs and converter environment.
+
+## Diagnostic initialization for additional precisions
+
+For each actual graph, initialize all inputs at real-valued zero: floating0 or the individual quantized zero point, with exactly that precision's shape and dtype. Restore inputs before each fixed-step Invoke and capture all outputs. Independent rawzero output allocations are diagnostic, not reference goldens. No A8 fixture is reused across precision. This policy does not qualify streaming or task accuracy.

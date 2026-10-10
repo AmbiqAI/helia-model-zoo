@@ -1,0 +1,61 @@
+{
+  "schema": "helia-model-zoo/record@1",
+  "id": "efficientat-mn02",
+  "title": "efficientat-mn02",
+  "domain": "audio",
+  "task": "audio-event-classification",
+  "visibility": "public",
+  "license": {
+    "spdx": null
+  },
+  "card": "README.md",
+  "io": {
+    "streaming": "stateless",
+    "state_pairs": []
+  },
+  "precisions": {
+    "a8w8": {
+      "model": {
+        "path": "a8w8/model.tflite",
+        "sha256": "eec86846965ace27d9c153a6ec7b4c0fa614859dcc4d2fdf5ac48a10894a1ea3",
+        "bytes": 490736
+      },
+      "inputs": [
+        {
+          "name": "serving_default_input:0",
+          "shape": [
+            1,
+            128,
+            1000,
+            1
+          ],
+          "dtype": "int8",
+          "scale": 0.015686266124248505,
+          "zero_point": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "PartitionedCall:1",
+          "shape": [
+            1,
+            192
+          ],
+          "dtype": "int8",
+          "scale": 0.007972877472639084,
+          "zero_point": -85
+        },
+        {
+          "name": "PartitionedCall:0",
+          "shape": [
+            1,
+            527
+          ],
+          "dtype": "int8",
+          "scale": 0.05797363072633743,
+          "zero_point": 127
+        }
+      ]
+    }
+  }
+}
