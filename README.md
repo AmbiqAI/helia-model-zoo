@@ -31,6 +31,9 @@ repository's own records, it also refuses any tracked `.tflite` or `.npz` file
 that no record lists; `--root` must then be the top of a git checkout. A record
 with several precisions needs the precision named (`zoo://<id>/<precision>`).
 
+For caller-owned source/cache setup and exact embedded C-array extraction, see
+[Reproduce supplied model sources](docs/how-to/use-supplied-sources.md).
+
 To contribute a model/golden pair for helia-aot release testing, follow
 [Add a model to the release corpus](docs/how-to/add-release-model.md). Adding an
 artifact here and enabling it in helia-aot are separate, reviewed changes.
