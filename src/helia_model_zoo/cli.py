@@ -171,6 +171,7 @@ def _fetch(args: argparse.Namespace) -> int:
 
 def _extract_header(args: argparse.Namespace) -> int:
     import hashlib
+    import stat
 
     from .embedded import extract_c_array
     from .manifest import _int, _sha256
@@ -180,6 +181,9 @@ def _extract_header(args: argparse.Namespace) -> int:
         _sha256(args.sha256, "--sha256")
         _int(args.header_bytes, "--header-bytes", 1)
         _int(args.bytes, "--bytes", 1)
+        source = args.header.stat()
+        if not stat.S_ISREG(source.st_mode) or source.st_size != args.header_bytes:
+            raise ValueError("header must be a regular file with its expected size")
         with args.header.open("rb") as stream:
             header = stream.read(args.header_bytes + 1)
         if len(header) != args.header_bytes or hashlib.sha256(header).hexdigest() != args.header_sha256:
@@ -196,7 +200,7 @@ def _extract_header(args: argparse.Namespace) -> int:
             if created:
                 args.output.unlink()
             raise
-    except (ValueError, OSError, OverflowError) as error:
+    except (ValueError, OSError, OverflowError, MemoryError) as error:
         print(error, file=sys.stderr)
         return 1
     print(args.output)

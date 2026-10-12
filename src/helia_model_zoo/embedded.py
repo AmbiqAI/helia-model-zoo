@@ -11,11 +11,15 @@ _LEXEME = re.compile(
     rb"/\*.*?\*/|//[^\r\n]*|\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|(?P<unfinished>/\*|[\"'])",
     re.DOTALL,
 )
-_CONDITIONAL = re.compile(rb"(?m)^[ \t]*#[ \t]*(?:if|ifdef|ifndef|elif|else|endif)\b")
+_SPACE = rb"[ \t\v\f]"
+_DIRECTIVE = rb"(?m)^" + _SPACE + rb"*#" + _SPACE + rb"*"
+_CONDITIONAL = re.compile(_DIRECTIVE + rb"(?:if|ifdef|ifndef|elif|else|endif)\b")
+_TRIGRAPHS = dict(zip(b"=/\'()!<>-", (b"#", b"\\", b"^", b"[", b"]", b"|", b"{", b"}", b"~"), strict=True))
+_DIGRAPHS = {b"%:%:": b"##", b"<:": b"[", b":>": b"]", b"<%": b"{", b"%>": b"}", b"%:": b"#"}
 _GUARD = re.compile(
-    rb"\s*#[ \t]*ifndef[ \t]+(?P<name>[A-Za-z_][A-Za-z0-9_]*)[ \t]*\r?\n"
-    rb"[ \t]*#[ \t]*define[ \t]+(?P=name)(?:[ \t]+1)?[ \t]*\r?\n"
-    rb"(?P<body>.*)^[ \t]*#[ \t]*endif[ \t]*\s*",
+    rb"\s*#[ \t\v\f]*ifndef[ \t\v\f]+(?P<name>[A-Za-z_][A-Za-z0-9_]*)[ \t\v\f]*\n"
+    rb"[ \t\v\f]*#[ \t\v\f]*define[ \t\v\f]+(?P=name)(?:[ \t\v\f]+1)?[ \t\v\f]*\n"
+    rb"(?P<body>.*)^[ \t\v\f]*#[ \t\v\f]*endif[ \t\v\f]*\s*",
     re.DOTALL | re.MULTILINE,
 )
 
@@ -31,7 +35,7 @@ def _integer(value: bytes) -> int:
 
 
 def extract_c_array(header: bytes, symbol: str) -> bytes:
-    """Read one ``unsigned char``/``uint8_t`` array of literal bytes.
+    """Read one global ``unsigned char``/``uint8_t`` array of literal bytes.
 
     Verify the header's provenance and the returned model's hash/size separately.
     Macros, expressions and conditional definitions are refused rather than
@@ -39,13 +43,16 @@ def extract_c_array(header: bytes, symbol: str) -> bytes:
     """
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", symbol):
         raise ValueError("expected a C array identifier")
-    # C removes escaped newlines before recognizing comments and literals.
-    text = _LEXEME.sub(_mask, re.sub(rb"\\\r?\n", b"", header))
+    # C translation replaces trigraphs before splicing lines and recognizing literals.
+    text = header.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    text = re.sub(rb"\?\?([=/\'()!<>-])", lambda match: _TRIGRAPHS[match[1][0]], text)
+    text = _LEXEME.sub(_mask, re.sub(rb"\\\n", b"", text))
+    text = re.sub(rb"%:%:|<:|:>|<%|%>|%:", lambda match: _DIGRAPHS[match[0]], text)
     if guard := _GUARD.fullmatch(text):
         text = guard["body"]
     if _CONDITIONAL.search(text):
         raise ValueError("conditional array definitions need preprocessing; supply an unconditional literal header")
-    text = re.sub(rb"(?m)^[ \t]*#[^\r\n]*", b"", text)
+    text = re.sub(_DIRECTIVE + rb"[^\n]*", b"", text)
     pattern = (
         rb"\b(?:unsigned\s+char|uint8_t)\s+"
         + re.escape(symbol.encode("ascii"))
@@ -53,10 +60,22 @@ def extract_c_array(header: bytes, symbol: str) -> bytes:
         + _INTEGER
         + rb")?\s*\]\s*(?:__attribute__\s*\(\([^;={}]*\)\)\s*)?=\s*\{([^{}]*)\}\s*;"
     )
-    matches = re.findall(pattern, text)
+    matches = list(re.finditer(pattern, text))
     if len(matches) != 1:
         raise ValueError(f"expected exactly one literal byte array named {symbol}, found {len(matches)}")
-    extent, body = matches[0]
+    # A declaration in a macro argument or function/block is not a global array.
+    depth = {ord("("): 0, ord("{"): 0}
+    closes = {ord(")"): ord("("), ord("}"): ord("{")}
+    for char in text[: matches[0].start()]:
+        if char in depth:
+            depth[char] += 1
+        elif char in closes:
+            depth[closes[char]] -= 1
+            if depth[closes[char]] < 0:
+                raise ValueError(f"{symbol}: malformed declaration context")
+    if any(depth.values()):
+        raise ValueError(f"{symbol}: expected a global array outside macro arguments or blocks")
+    extent, body = matches[0].groups()
     tokens = body.strip().removesuffix(b",").split(b",")
     values = []
     for token in tokens:

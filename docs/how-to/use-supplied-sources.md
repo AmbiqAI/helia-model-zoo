@@ -37,7 +37,7 @@ helia-zoo extract-header \
   --bytes 34912 --output kws-model.tflite
 ```
 
-The command requires both identities, refuses a missing or changed header, nonliteral/ambiguous arrays, conditional definitions other than a canonical include guard, and wrong extracted bytes, and never overwrites an existing output. It copies literal bytes without loading an inference runtime, retraining or exporting a graph. The Python helper `helia_model_zoo.embedded.extract_c_array(header_bytes, symbol)` performs the literal extraction; callers of that helper must verify source and model identities separately.
+The command requires both identities, refuses a missing or changed header, nonliteral/ambiguous arrays, declarations inside macro arguments or blocks, conditional definitions other than a canonical include guard, and wrong extracted bytes, and never overwrites an existing output. It reads global literal arrays without evaluating a C preprocessor. It copies literal bytes without loading an inference runtime, retraining or exporting a graph. The Python helper `helia_model_zoo.embedded.extract_c_array(header_bytes, symbol)` performs the literal extraction; callers of that helper must verify source and model identities separately.
 
 The KWS graph has INT16 input `[1,4,40]` and output `[1,1,2]`; this differs from the current 257-bin `galaxy_focal` training configuration. Its exact training checkpoint is unknown. The speaker graph has INT16 input `[1,1,40]` and output `[1,1,64]`; the output is an embedding, and its exact relationship to the saved LibriSpeech checkpoint is unknown. Neither graph inherits checkpoint metrics from those training runs.
 

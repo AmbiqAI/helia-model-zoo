@@ -165,6 +165,84 @@ def test_cli_absurd_header_size_is_a_source_error(tmp_path):
     assert not output.exists()
 
 
+@pytest.mark.parametrize(
+    "directive",
+    [b"\v#", b"\f#", b"#\v", b"#\f", b"%:", b"??=", b"\v%:"],
+)
+def test_cli_rejects_all_c_directive_spellings(tmp_path, directive):
+    content = directive + b"if 0\n" + header() + b"\n" + directive + b"endif\n"
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 1
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("prefix,suffix", [(b"DROP(\n", b"\n)"), (b"void f(){\n", b"\n}"), (b"void f()<%\n", b"\n%>")])
+def test_macro_argument_or_block_is_not_a_global_array(tmp_path, prefix, suffix):
+    content = b"#define DROP(...)\n" + prefix + header() + suffix
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 1
+    assert not output.exists()
+
+
+def test_small_header_with_large_expected_size_does_not_allocate(tmp_path, monkeypatch):
+    content = header()
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    args = command(source, output, content)
+    args[args.index("--header-bytes") + 1] = str(1024**3)
+    real_open = type(source).open
+
+    class NoLargeRead:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, count):
+            raise AssertionError("mismatched header size must be rejected before reading")
+
+    monkeypatch.setattr(type(source), "open", lambda p, *a, **kw: NoLargeRead() if p == source else real_open(p, *a, **kw))
+    assert main(args) == 1
+    assert not output.exists()
+
+
+def test_cli_read_memory_failure_is_a_clean_refusal(tmp_path, monkeypatch):
+    content = header()
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    real_open = type(source).open
+
+    class FailedRead:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, count):
+            raise MemoryError("header allocation failed")
+
+    monkeypatch.setattr(type(source), "open", lambda p, *a, **kw: FailedRead() if p == source else real_open(p, *a, **kw))
+    assert main(command(source, output, content)) == 1
+    assert not output.exists()
+
+
+def test_trigraph_line_splicing_and_cr_only_lines_are_lexical_boundaries():
+    from helia_model_zoo.embedded import extract_c_array
+
+    with pytest.raises(ValueError):
+        extract_c_array(b"// continued??/\n" + header().replace(b"\n", b" "), "mut_model")
+    with pytest.raises(ValueError):
+        extract_c_array(b"#if 0\r" + header() + b"\r#endif\r", "mut_model")
+
+
 def test_extraction_does_not_load_inference_runtime():
     import subprocess
     import sys
