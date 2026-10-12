@@ -38,7 +38,8 @@ def extract_c_array(header: bytes, symbol: str) -> bytes:
 
     Verify the header's provenance and the returned model's hash/size separately.
     Macros, expressions and conditional definitions are refused rather than
-    evaluated. A canonical outer include guard is allowed.
+    evaluated. An unused canonical outer guard and a following literal length
+    macro named ``<symbol>_LEN`` matching the byte count are allowed.
     """
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", symbol):
         raise ValueError("expected a C array identifier")
@@ -49,8 +50,9 @@ def extract_c_array(header: bytes, symbol: str) -> bytes:
     text = re.sub(rb"%:%:|<:|:>|<%|%>|%:", lambda match: _DIGRAPHS[match[0]], text)
     if guard := _GUARD.fullmatch(text):
         text = guard["body"]
-    if re.search(_DIRECTIVE, text):
-        raise ValueError("preprocessing beyond a canonical outer include guard is unsupported")
+        if re.search(rb"\b" + re.escape(guard["name"]) + rb"\b", text):
+            raise ValueError("include guard identifier must not be used in the header body")
+    directives = list(re.finditer(_DIRECTIVE + rb"[^\n]*", text))
     pattern = (
         rb"\b(?:unsigned\s+char|uint8_t)\s+"
         + re.escape(symbol.encode("ascii"))
@@ -61,6 +63,27 @@ def extract_c_array(header: bytes, symbol: str) -> bytes:
     matches = list(re.finditer(pattern, text))
     if len(matches) != 1:
         raise ValueError(f"expected exactly one literal byte array named {symbol}, found {len(matches)}")
+    length = None
+    if directives:
+        # SoundKit records its array size after the definition; it cannot alter it.
+        directive = directives[0]
+        length = re.fullmatch(
+            _DIRECTIVE
+            + rb"define"
+            + _SPACE
+            + rb"+"
+            + re.escape(symbol.encode("ascii"))
+            + rb"_LEN"
+            + _SPACE
+            + rb"+("
+            + _INTEGER
+            + rb")"
+            + _SPACE
+            + rb"*",
+            directive[0],
+        )
+        if len(directives) != 1 or directive.start() < matches[0].end() or length is None:
+            raise ValueError("only an unused outer guard and trailing literal <symbol>_LEN metadata are supported")
     # A declaration in a macro argument or function/block is not a global array.
     depth = {ord("("): 0, ord("{"): 0}
     closes = {ord(")"): ord("("), ord("}"): ord("{")}
@@ -85,6 +108,8 @@ def extract_c_array(header: bytes, symbol: str) -> bytes:
             raise ValueError(f"{symbol}: initializer contains a value outside 0..255")
         values.append(value)
     model = bytes(values)
+    if length is not None and _integer(length[1]) != len(model):
+        raise ValueError(f"{symbol}: trailing length metadata differs from literal byte count")
     if extent and _integer(extent) != len(model):
         raise ValueError(f"{symbol}: declared extent differs from literal byte count")
     if model[4:8] != b"TFL3":

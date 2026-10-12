@@ -238,6 +238,52 @@ def test_cli_memory_failure_removes_partial_output(tmp_path, monkeypatch, failur
     assert not output.exists()
 
 
+@pytest.mark.parametrize("name", [b"char", b"unsigned", b"mut_model", b"NS_PUT_IN_TCM"])
+def test_guard_cannot_redefine_body_tokens(tmp_path, name):
+    content = b"#ifndef " + name + b"\n#define " + name + b"\n" + header() + b"\n#endif"
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 1
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("marker,count", [(b"#", b"8"), (b"%:", b"010"), (b"??=", b"0x8")])
+def test_cli_supplied_header_length_metadata_is_verified(tmp_path, marker, count):
+    content = (
+        b"#ifndef MODEL_H\n#define MODEL_H\n"
+        + header()
+        + b"\n"
+        + marker
+        + b"define mut_model_LEN "
+        + count
+        + b"\n#endif"
+    )
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 0
+    assert output.read_bytes() == MODEL
+
+
+@pytest.mark.parametrize(
+    "prefix,suffix",
+    [
+        (b"#define mut_model_LEN 8\n", b""),
+        (b"", b"\n#define mut_model_LEN 9"),
+        (b"", b"\n#define mut_model_LEN (8)"),
+        (b"", b"\n#define mut_model_LEN 8\n#define mut_model_LEN 8"),
+    ],
+)
+def test_cli_refuses_early_wrong_or_ambiguous_length_metadata(tmp_path, prefix, suffix):
+    content = prefix + header() + suffix
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 1
+    assert not output.exists()
+
+
 def test_small_header_with_large_expected_size_does_not_allocate(tmp_path, monkeypatch):
     content = header()
     source = tmp_path / "model.h"
