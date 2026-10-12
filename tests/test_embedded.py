@@ -284,6 +284,41 @@ def test_cli_refuses_early_wrong_or_ambiguous_length_metadata(tmp_path, prefix, 
     assert not output.exists()
 
 
+@pytest.mark.parametrize(
+    "location,quoted",
+    [
+        ("footer", b'"units"'),
+        ("footer", b"'x'"),
+        ("initializer", b'"units"'),
+        ("initializer", b"'x'"),
+        ("declaration", b'"units"'),
+        ("declaration", b"'x'"),
+    ],
+)
+def test_cli_quoted_tokens_are_not_whitespace(tmp_path, location, quoted):
+    content = header()
+    if location == "footer":
+        content += b"\n#define mut_model_LEN 8 " + quoted
+    elif location == "initializer":
+        content = content.replace(b"0x1c,", b"0x1c " + quoted + b",")
+    else:
+        content = content.replace(b"char mut_model", b"char " + quoted + b" mut_model")
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 1
+    assert not output.exists()
+
+
+def test_cli_comments_remain_whitespace_in_literal_metadata(tmp_path):
+    content = header().replace(b"0x1c,", b"0x1c /* byte */,") + b"\n#define mut_model_LEN /* count */ 8 // bytes"
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 0
+    assert output.read_bytes() == MODEL
+
+
 def test_small_header_with_large_expected_size_does_not_allocate(tmp_path, monkeypatch):
     content = header()
     source = tmp_path / "model.h"

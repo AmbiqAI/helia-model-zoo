@@ -26,7 +26,9 @@ _GUARD = re.compile(
 def _mask(match: re.Match[bytes]) -> bytes:
     if match.group("unfinished") is not None:
         raise ValueError("unterminated C comment or string/character literal")
-    return re.sub(rb"[^\r\n]", b" ", match.group())
+    # Comments separate tokens; quoted literals must remain grammar barriers.
+    replacement = b" " if match[0].startswith(b"/") else b"@"
+    return re.sub(rb"[^\r\n]", replacement, match[0])
 
 
 def _integer(value: bytes) -> int:
