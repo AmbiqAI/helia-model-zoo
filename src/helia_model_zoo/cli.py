@@ -196,7 +196,7 @@ def _extract_header(args: argparse.Namespace) -> int:
             if created:
                 args.output.unlink()
             raise
-    except (ValueError, OSError) as error:
+    except (ValueError, OSError, OverflowError) as error:
         print(error, file=sys.stderr)
         return 1
     print(args.output)

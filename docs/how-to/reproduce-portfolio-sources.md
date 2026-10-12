@@ -45,7 +45,7 @@ This returns a header, not a model file. The exact selected graph and diagnostic
 
 These are source routes for the existing selected families, not engine/operator/placement admission rules. The original public records and the later authenticated graph/record/diagnostic transfers coexist. A private transfer makes the selected bytes retrievable to an authorized caller; it does not resolve public weight redistribution terms or make its diagnostic output a reference golden. Caller-owned overlay and immutable FileRef bindings remain separate from this public catalog.
 
-The source transfers preserve exact selected identities. The four-variant supplement supplies HeartKit Float32-compute/Float16-storage variants and two distinct Silero alternatives through normal FileRef/Artifact routes; it does not add a Zoo precision or bypass its validators. HeartKit mixed-storage variants omit the incompatible runner record, and the two distinct Silero A8 graphs remain separate Artifacts.
+The source transfers preserve exact selected identities. The four-variant supplement supplies HeartKit Float32-compute/Float16-storage variants and two distinct Silero alternatives through normal FileRef/Artifact routes; it does not add a Zoo precision or bypass its validators. HeartKit mixed-storage variants omit the incompatible runner record, and the distinct Silero A8 model and its full-state fixture remain two separate Artifacts.
 
 | Selected family | Existing source route | Remaining source/access condition |
 |---|---|---|
@@ -72,7 +72,7 @@ The source transfers preserve exact selected identities. The four-variant supple
 | mobilenetv2-035-96 | authenticated exact A8W8 graph/record/full-IO diagnostic | Original oversized FP32 graph remains a different condition; public weight terms/regeneration provenance separate |
 | sanotts-heartnano | shelved; source retained separately | No portable exact selected graph pin established; source availability does not authorize invoking or repairing source UB |
 | tinytts | shelved; source retained separately | No standard selected record established; source availability/execution disposition remain distinct |
-| silero-v6 | original private record/graph; exact diagnostic and distinct-variant supplement | Original selected, maintained A16 and two distinct A8 identities/fixtures remain separate; no inherited metrics/public visibility |
+| silero-v6 | original private record/graph; exact diagnostic and distinct-variant supplement | Original selected A16, maintained A16 and distinct A8 alternative identities/fixtures remain separate; no inherited metrics/public visibility |
 | firered-vad-stream | original private record/graph plus exact saved diagnostic transfer | Preserve all named cache/index mappings and individual zero points; authorization required |
 | mixtoken-relu-imu | authenticated exact synthetic/untrained graph/record/full-IO diagnostic | Source/seed/calibration companions retained; public derivative terms unknown, no trained claim |
 | microdpad-derived-fusion | authenticated exact A8/A16 graphs/records/full-IO diagnostics | Each precision has its own graph, quantizers and fixture; source/seed/calibration/unknown terms retained |

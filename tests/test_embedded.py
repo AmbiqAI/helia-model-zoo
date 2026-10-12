@@ -88,7 +88,7 @@ def test_cli_corrupted_header_cannot_create_output(tmp_path):
     assert not output.exists()
 
 
-@pytest.mark.parametrize("body", [b"0x100", b"-1", b"256", b"012", b"1 << 4", b"MACRO", b"1,,2"])
+@pytest.mark.parametrize("body", [b"0x100", b"-1", b"256", b"1 << 4", b"MACRO", b"1,,2"])
 def test_extraction_refuses_expressions_and_non_byte_literals(body):
     from helia_model_zoo.embedded import extract_c_array
 
@@ -114,6 +114,55 @@ def test_duplicate_symbol_and_non_model_bytes_are_refused():
         extract_c_array(header(b"other"), "mut_model")
     with pytest.raises(ValueError, match="identifier"):
         extract_c_array(header(), "mut_.*")
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b'const char *help = "unsigned char mut_model[]={28,0,0,0,84,70,76,51};";',
+        b"// continued comment \\\nunsigned char mut_model[]={28,0,0,0,84,70,76,51};\n",
+        b"#if 0\nunsigned char mut_model[]={28,0,0,0,84,70,76,51};\n#else\n"
+        b"typedef unsigned char Byte; Byte mut_model[]={1};\n#endif\n",
+    ],
+)
+def test_cli_refuses_lexical_decoys_and_conditional_arrays(tmp_path, content):
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 1
+    assert not output.exists()
+
+
+def test_string_comment_markers_do_not_hide_a_real_array():
+    from helia_model_zoo.embedded import extract_c_array
+
+    content = b'const char *before = "/*";\n' + header() + b'\nconst char *after = "*/";'
+    assert extract_c_array(content, "mut_model") == MODEL
+
+
+def test_comments_do_not_join_integer_tokens():
+    from helia_model_zoo.embedded import extract_c_array
+
+    with pytest.raises(ValueError):
+        extract_c_array(b"unsigned char mut_model[]={28,0,0,0,8/**/4,70,76,51};", "mut_model")
+
+
+def test_c_octal_extent_and_canonical_header_guard():
+    from helia_model_zoo.embedded import extract_c_array
+
+    content = b"#ifndef MODEL_H\n#define MODEL_H\nuint8_t model[010]={034,0,0,0,0124,0106,0114,063};\n#endif\n"
+    assert extract_c_array(content, "model") == MODEL
+
+
+def test_cli_absurd_header_size_is_a_source_error(tmp_path):
+    content = header()
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    args = command(source, output, content)
+    args[args.index("--header-bytes") + 1] = str(2**100)
+    assert main(args) == 1
+    assert not output.exists()
 
 
 def test_extraction_does_not_load_inference_runtime():
