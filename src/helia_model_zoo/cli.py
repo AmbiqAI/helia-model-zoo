@@ -169,6 +169,44 @@ def _fetch(args: argparse.Namespace) -> int:
     return 0
 
 
+def _extract_header(args: argparse.Namespace) -> int:
+    import hashlib
+    import stat
+
+    from .embedded import extract_c_array
+    from .manifest import _int, _sha256
+
+    try:
+        _sha256(args.header_sha256, "--header-sha256")
+        _sha256(args.sha256, "--sha256")
+        _int(args.header_bytes, "--header-bytes", 1)
+        _int(args.bytes, "--bytes", 1)
+        source = args.header.stat()
+        if not stat.S_ISREG(source.st_mode) or source.st_size != args.header_bytes:
+            raise ValueError("header must be a regular file with its expected size")
+        with args.header.open("rb") as stream:
+            header = stream.read(args.header_bytes + 1)
+        if len(header) != args.header_bytes or hashlib.sha256(header).hexdigest() != args.header_sha256:
+            raise ValueError("header does not match its expected size and sha256")
+        model = extract_c_array(header, args.symbol)
+        if len(model) != args.bytes or hashlib.sha256(model).hexdigest() != args.sha256:
+            raise ValueError("extracted model does not match its expected size and sha256")
+        created = False
+        try:
+            with args.output.open("xb") as stream:
+                created = True
+                stream.write(model)
+        except (OSError, MemoryError):
+            if created:
+                args.output.unlink()
+            raise
+    except (ValueError, OSError, OverflowError, MemoryError) as error:
+        print(error, file=sys.stderr)
+        return 1
+    print(args.output)
+    return 0
+
+
 def _guard(args: argparse.Namespace) -> int:
     import subprocess
 
@@ -238,8 +276,9 @@ def _golden_generate(args: argparse.Namespace) -> int:
         else:
             inputs, outputs = model_tensors(args.model)
             precision = Precision("model", FileRef("repo://model"), inputs, outputs, None)
-            if args.pair:
-                pairs = golden.pairs_by_index(inputs, outputs, _pairs(args.pair))
+            indices = _pairs(args.pair)
+            if indices is not None:
+                pairs = golden.pairs_by_index(inputs, outputs, indices)
             else:
                 pairs = golden.state_pairs_from_names(inputs, outputs, signature_names(args.model))
             io = IO("explicit_state" if pairs else "stateless", pairs)
@@ -360,6 +399,15 @@ def main(argv: list[str] | None = None) -> int:
     get.add_argument("--card", action="store_true", help="also fetch the model card")
     get.add_argument("--root", help="hydrated checkout to read repository files from")
     get.set_defaults(run=_fetch)
+    extract = commands.add_parser("extract-header", help="extract an exact pinned TFLite model from a C byte array")
+    extract.add_argument("--header", required=True, type=Path, help="supplied or normally fetched C header")
+    extract.add_argument("--header-sha256", required=True, help="expected header SHA256")
+    extract.add_argument("--header-bytes", required=True, type=int, help="expected header size")
+    extract.add_argument("--symbol", required=True, help="literal byte array name")
+    extract.add_argument("--sha256", required=True, help="expected extracted model SHA256")
+    extract.add_argument("--bytes", required=True, type=int, help="expected extracted model size")
+    extract.add_argument("--output", required=True, type=Path, help="new output file (existing files are refused)")
+    extract.set_defaults(run=_extract_header)
     guard = commands.add_parser("guard", help="refuse if a checkout contains any name from a private overlay")
     guard.add_argument(
         "--overlay", required=True, help="overlay: a local directory or an hf://datasets/<org>/<repo>@<commit> root"

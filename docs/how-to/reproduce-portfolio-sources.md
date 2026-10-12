@@ -39,45 +39,49 @@ header = fetch_file(FileRef(
 ), anonymous=True)
 ```
 
-This returns a header, not a model file. Use the already supplied graph for model execution until an authorized raw-graph transfer is available. Original publisher readability and a code licence do not establish derivative weight redistribution rights. Local data roots and retained diagnostic NPZ remain caller-supplied inputs, not portable hosting. Ordinary public current-key S3 URLs are usable with expected SHA256 and size. The separate SleepKit source is published at dff63db and merged as56d56b10; the specific denied versionId request remains stopped.
+This returns a header, not a model file. The exact selected graph and diagnostic fixture are also available through the caller-authorized private overlay. For literal embedded bytes, the maintained [extraction command](use-supplied-sources.md) verifies the supplied header and extracted model separately. Original publisher readability and a code licence do not establish derivative weight redistribution rights. Local data roots and retained diagnostic NPZ remain caller-supplied inputs, not portable hosting. Ordinary public current-key S3 URLs are usable with expected SHA256 and size. The separate SleepKit source is published at dff63db and merged as56d56b10; the specific denied versionId request remains stopped.
 
-## Full selected-family dispositions
+## Full selected-family source dispositions
 
-This table documents the existing selected families; it is not another authoritative catalog or a claim that all artifacts are public. Precision/graph selection remains in the existing consumer catalog and matrix. Sources with incomplete terms or preparation retain named local routes and explicit gaps.
+These are source routes for the existing selected families, not engine/operator/placement admission rules. The original public records and the later authenticated graph/record/diagnostic transfers coexist. A private transfer makes the selected bytes retrievable to an authorized caller; it does not resolve public weight redistribution terms or make its diagnostic output a reference golden. Caller-owned overlay and immutable FileRef bindings remain separate from this public catalog.
 
-| Selected family | Source route | Remaining condition |
-| --- | --- | --- |
-| `mlperf-ad` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
-| `mlperf-kws` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
-| `mlperf-resnet8` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
-| `mlperf-vww` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
-| `heartkit-seg` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
-| `heartkit-arr` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
-| `sleepkit-apnea` | local selected graph; repository-only intake | Selected graph differs from publisher S3 export; do not substitute it. Exact selected graph hosting/terms remain unresolved. Checkpoint/config/calibration bindings describe regeneration separately and do not block an obtainable exact graph |
-| `compressionkit-ppg-encoder` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
-| `microwakeword-okay-nabu` | published selected graph at `68f3b256`; pinned public parent | Exact transform source retained separately; portable generator packaging and byte-regeneration check pending. Frontend/task/streaming qualification separate |
-| `speech-to-intent-micro` | public pinned source header; local selected graph | Embedded bytes match selected graph; normal model resolver cannot decode C header. Raw graph transfer and weight terms pending |
-| `gtcrn-official-stream-dns3` | held | No normal pinned zoo record for selected graph; Selected artifact redistribution/license binding not recorded here; Current BENCH execution catalog has no exact selected graph entry |
-| `fastenhancer-t` | held | No normal pinned zoo record for selected graph; Selected artifact redistribution/license binding not recorded here; Current BENCH execution catalog has no exact selected graph entry |
-| `mcunet-in1` | local selected graph; repository-only intake | Publisher MCUNet TFLite is860752B, selected native96 derivative860888B; do not substitute parent. Exact derivative transfer, transform recipe and weight terms missing |
-| `circlematch-d32` | removed | No normal pinned zoo record for selected graph; Selected artifact redistribution/license binding not recorded here; No portable selected graph pin; retained original source asset is separate |
-| `rnnoise` | default source record; artifact at repository LFS or original publisher | Exact source and diagnostic IO; qualification separate |
-| `wekws-dstcn` | pinned original checkpoint; local selected graph | Checkpoint query API is outside normal HTTPS FileRef grammar. Exact neural-only transform/calibration/environment and graph transfer/weight terms missing; old CMVN route and numerical failures held |
-| `compressionkit-ecg-prior` | default source record; artifact at repository LFS or original publisher | weight terms unknown; no mirror/public benchmark admission; source metadata/typed diagnostic initialization supplied |
-| `sleepkit-stage` | normal catalog source; checksum-pinned original publisher graph | Exact selected graph is obtainable from the ordinary public S3 URL with expected SHA256/size, published at dff63db and merged as56d56b10. Diagnostic NPZ remains separate from goldens; weight terms and regeneration inputs remain unresolved |
-| `nnid-tflm` | pinned original non-S3 graph in repository-only intake | Graph source is independently retrievable; both feedback pairs have untied quantizers. Pair0 zero-point mismatch and both exact-carry scale refusals prevent normal runtime acceptance |
-| `dtln-tflm` | default source record; artifact at repository LFS or original publisher | Weight redistribution terms unknown; four internal mutable-state initialization/fixture still missing |
-| `mobilenetv2-035-96` | local selected A8W8 identity with INT8 external IO; repository-only intake | Exact selected graph hosting and weight terms pending. Original oversized FP32 evidence remains separate; checkpoint/freeze/export/calibration bindings describe regeneration |
-| `sanotts-heartnano` | shelved | No normal pinned zoo record for selected graph; Selected artifact redistribution/license binding not recorded here; No portable selected graph pin; retained original source asset is separate |
-| `tinytts` | shelved | No normal pinned zoo record for selected graph; Selected artifact redistribution/license binding not recorded here; Current BENCH execution catalog has no exact selected graph entry |
-| `silero-v6` | private record and named internal data; no public metadata/URI | Private managed-source visibility unchanged; exact model/fixture copied to named internal data, no public mirror |
-| `firered-vad-stream` | private record and named internal data; no public metadata/URI | Private managed-source visibility unchanged; exact model/fixture copied to named internal data, no public mirror |
-| `mixtoken-relu-imu` | local synthetic/untrained graph; repository-only intake | Random-weight seed/config/source and exact calibration recipe need a portable binding; establish derivative rights and raw graph transfer; no trained claim |
-| `microdpad-derived-fusion` | local synthetic/untrained graph; A8/A16 repository-only intake | A16 companion metadata uses its distinct graph/IO pins; random-weight source/config/calibration and derivative rights/transfer unresolved |
-| `fomo-cuedc-animals` | default source record; artifact at repository LFS or original publisher | weight terms unknown; no mirror/public benchmark admission; source metadata/typed diagnostic initialization supplied |
-| `yamnet256-fsd5` | local selected graph; repository-only intake | Exact trained parent/checkpoint, FSD5 head/frontend and conversion/calibration recipe unbound; weight terms and raw graph transfer missing |
-| `acdnet20-esc50` | local selected graph; repository-only intake | Exact ESC50 checkpoint, full frontend/source/export/calibration recipe unbound; weight terms and raw graph transfer missing |
-| `e2a2-clean-speech-op4` | temporary repository-only intake; named local Artifact or original publisher | Selected INT8 output has no quantizer; no full saved fixture. Existing preparation refusal retained, no scale invented. |
-| `efficientat-mn02` | pinned public source README; retained checkpoint and local graph | Bind checkpoint file/size and full10s source adaptations/calibration/converter recipe; graph transfer/weight terms pending. Singleton normalization stays a separate identity |
-| `mobileone-s0-native96` | pinned public source; retained fused checkpoint and local graph | Bind native96 adaptation/calibration/converter recipe; raw graph transfer and weight terms pending. Original224 quality is separate |
-| `cp-mobile-dcase2025` | pinned official checkpoint; local selected graph | General submodel, complete frontend/ten-logit output view, calibration and converter recipe required; raw graph transfer and weight terms pending |
+The source transfers preserve exact selected identities. The four-variant supplement supplies HeartKit Float32-compute/Float16-storage variants and two distinct Silero alternatives through normal FileRef/Artifact routes; it does not add a Zoo precision or bypass its validators. HeartKit mixed-storage variants omit the incompatible runner record, and the distinct Silero A8 model and its full-state fixture remain two separate Artifacts.
+
+| Selected family | Existing source route | Remaining source/access condition |
+|---|---|---|
+| mlperf-ad | public mlperf-tiny-ad01 record and pinned graph/golden | Choose the exact selected precision; diagnostic/quality claims stay separate |
+| mlperf-kws | public mlperf-tiny-kws record and pinned graph/golden | No private authentication required |
+| mlperf-resnet8 | public mlperf-tiny-resnet8 record and pinned graph/golden | Keep the selected wide ResNet graph distinct |
+| mlperf-vww | public mlperf-tiny-vww record and pinned graph/golden | Keep the selected graph distinct from other VWW exports |
+| heartkit-seg | public graph variants; authenticated exact mixed-storage supplement | Full-IO diagnostic fixture bound separately; parent rights/provenance remain in the card |
+| heartkit-arr | public graph variants; authenticated exact mixed-storage supplement | Full-IO diagnostic fixture bound separately; parent rights/provenance remain in the card |
+| sleepkit-apnea | authenticated exact selected graph/record/full-IO diagnostic | Selected graph differs from publisher S3 export; no substitution. Unknown public weight terms remain unknown |
+| compressionkit-ppg-encoder | public graph record and retained full-IO data | Existing weight-rights/source binding retained |
+| microwakeword-okay-nabu | published selected graph and exact retained transform companion | Preserve all six cache pairs, source reset quantizers and notices; re-export is not a retrieval prerequisite |
+| speech-to-intent-micro | public pinned source header; authenticated exact selected graph/record/full-IO diagnostic | Header extraction is separate from fetching a raw graph; public derivative weight terms remain unknown |
+| gtcrn-official-stream-dns3 | exact supplied selected graph and complete raw-state fixture | No standard remote selected record established; retain named caller inputs. Historical execution hold is not a source availability rule |
+| fastenhancer-t | exact supplied selected graph and complete raw-state fixture | No standard remote selected record established; retain named caller inputs. Historical execution hold is not a source availability rule |
+| mcunet-in1 | authenticated exact native96 selected graph/record/full-IO diagnostic | Publisher parent is a different graph; conversion/re-export provenance is separate from retrieval |
+| circlematch-d32 | removed selection; original source retained separately | No portable selected graph binding; do not restore catalog/execution admission from a source asset |
+| rnnoise | public graph/golden record | Exact source identity and source-reset behavior retained; qualification separate |
+| wekws-dstcn | authenticated exact neural-only graph/record/full-IO diagnostic; original checkpoint companion | Keep old CMVN graph distinct. Retain all six saved cache inputs; source retrieval does not close historical numerical failures |
+| compressionkit-ecg-prior | checksum-pinned original-publisher graph record | Complete 256-token INT32 context and all 256x256 outputs; unknown weight terms, no mirror claim |
+| sleepkit-stage | normal catalog, exact checksum-pinned ordinary public S3 graph | Diagnostic NPZ separately bound. Denied versionId route stays stopped; terms/checkpoint regeneration gaps explicit |
+| nnid-tflm | public pinned original graph; retained full-state fixed-step diagnostic | Source reset and graph-traced cache pairing are source facts; carry conversion/runtime admission belong to consumers |
+| dtln-tflm | public graph record and retained state/initializer source facts | Preserve original variable buffers/reset literals; no fabricated initializers or runtime support claim |
+| mobilenetv2-035-96 | authenticated exact A8W8 graph/record/full-IO diagnostic | Original oversized FP32 graph remains a different condition; public weight terms/regeneration provenance separate |
+| sanotts-heartnano | shelved; source retained separately | No portable exact selected graph pin established; source availability does not authorize invoking or repairing source UB |
+| tinytts | shelved; source retained separately | No standard selected record established; source availability/execution disposition remain distinct |
+| silero-v6 | original private record/graph; exact diagnostic and distinct-variant supplement | Original selected A16, maintained A16 and distinct A8 alternative identities/fixtures remain separate; no inherited metrics/public visibility |
+| firered-vad-stream | original private record/graph plus exact saved diagnostic transfer | Preserve all named cache/index mappings and individual zero points; authorization required |
+| mixtoken-relu-imu | authenticated exact synthetic/untrained graph/record/full-IO diagnostic | Source/seed/calibration companions retained; public derivative terms unknown, no trained claim |
+| microdpad-derived-fusion | authenticated exact A8/A16 graphs/records/full-IO diagnostics | Each precision has its own graph, quantizers and fixture; source/seed/calibration/unknown terms retained |
+| fomo-cuedc-animals | checksum-pinned original anonymous publisher graph | Source-only access does not grant redistribution rights or inherit a saved diagnostic/golden/timing |
+| yamnet256-fsd5 | authenticated exact selected graph/record/full-IO diagnostic | Trained parent/FSD5 head/frontend/re-export provenance and public weight terms remain separate gaps |
+| acdnet20-esc50 | authenticated exact selected graph/record/full-IO diagnostic | ESC50 parent/frontend/re-export provenance and public weight terms remain separate gaps |
+| e2a2-clean-speech-op4 | repository-only intake with named selected graph | Selected INT8 output lacks a quantizer/full saved fixture; retain actual preparation gap, do not invent a scale |
+| efficientat-mn02 | authenticated exact normalized selected graph/record/full-IO diagnostic | Preserve full10s input/both outputs; original/normalized graphs distinct. Checkpoint/re-export provenance separate |
+| mobileone-s0-native96 | authenticated exact native96 selected graph/record/full-IO diagnostic | Original224 graph/quality separate; preserve selected hash/full1000 outputs and unknown public weight terms |
+| cp-mobile-dcase2025 | authenticated exact general-submodel graph/record/full-IO diagnostic | Preserve complete frontend input/ten logits; checkpoint/re-export provenance separate from obtainable bytes |
+
+[Supplied sources](use-supplied-sources.md) describes exact SoundKit/SE2 files, embedded-header extraction and station/cache prerequisites. Those additional source packets do not silently enlarge this selected-family table or establish runtime qualification.
