@@ -319,6 +319,37 @@ def test_cli_comments_remain_whitespace_in_literal_metadata(tmp_path):
     assert output.read_bytes() == MODEL
 
 
+@pytest.mark.parametrize("quote", [b'"', b"'"])
+@pytest.mark.parametrize("newline", [b"\n", b"\r", b"\r\n"])
+def test_cli_raw_newline_in_literal_cannot_hide_directives(tmp_path, quote, newline):
+    content = (
+        b"const char *text="
+        + quote
+        + b"start"
+        + newline
+        + b"#define char int"
+        + newline
+        + b"end"
+        + quote
+        + b";\n"
+        + header()
+    )
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 1
+    assert not output.exists()
+
+
+def test_cli_valid_spliced_literal_keeps_the_real_array(tmp_path):
+    content = b'const char *text="start' + b"\\\n" + b'end";\n' + header()
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 0
+    assert output.read_bytes() == MODEL
+
+
 def test_small_header_with_large_expected_size_does_not_allocate(tmp_path, monkeypatch):
     content = header()
     source = tmp_path / "model.h"
