@@ -196,7 +196,7 @@ def _extract_header(args: argparse.Namespace) -> int:
             with args.output.open("xb") as stream:
                 created = True
                 stream.write(model)
-        except OSError:
+        except (OSError, MemoryError):
             if created:
                 args.output.unlink()
             raise

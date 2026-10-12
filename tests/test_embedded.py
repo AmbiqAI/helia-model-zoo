@@ -188,6 +188,56 @@ def test_macro_argument_or_block_is_not_a_global_array(tmp_path, prefix, suffix)
     assert not output.exists()
 
 
+@pytest.mark.parametrize(
+    "directive",
+    [
+        b"#define mut_model other",
+        b"#define char int",
+        b"#define unsigned short",
+        b'#include "other.h"',
+        b"#undef mut_model",
+    ],
+)
+def test_cli_refuses_preprocessing_beyond_outer_guard(tmp_path, directive):
+    content = directive + b"\n" + header()
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    assert main(command(source, output, content)) == 1
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("failure", ["write", "close"])
+def test_cli_memory_failure_removes_partial_output(tmp_path, monkeypatch, failure):
+    content = header()
+    source = tmp_path / "model.h"
+    source.write_bytes(content)
+    output = tmp_path / "model.tflite"
+    real_open = type(source).open
+
+    class FailedOutput:
+        def __enter__(self):
+            self.stream = real_open(output, "xb")
+            return self
+
+        def write(self, data):
+            self.stream.write(data[:1])
+            if failure == "write":
+                raise MemoryError("output write allocation failed")
+
+        def __exit__(self, *args):
+            self.stream.close()
+            if failure == "close":
+                raise MemoryError("output close allocation failed")
+            return False
+
+    monkeypatch.setattr(
+        type(source), "open", lambda p, *a, **kw: FailedOutput() if p == output else real_open(p, *a, **kw)
+    )
+    assert main(command(source, output, content)) == 1
+    assert not output.exists()
+
+
 def test_small_header_with_large_expected_size_does_not_allocate(tmp_path, monkeypatch):
     content = header()
     source = tmp_path / "model.h"
@@ -207,7 +257,9 @@ def test_small_header_with_large_expected_size_does_not_allocate(tmp_path, monke
         def read(self, count):
             raise AssertionError("mismatched header size must be rejected before reading")
 
-    monkeypatch.setattr(type(source), "open", lambda p, *a, **kw: NoLargeRead() if p == source else real_open(p, *a, **kw))
+    monkeypatch.setattr(
+        type(source), "open", lambda p, *a, **kw: NoLargeRead() if p == source else real_open(p, *a, **kw)
+    )
     assert main(args) == 1
     assert not output.exists()
 
@@ -229,7 +281,9 @@ def test_cli_read_memory_failure_is_a_clean_refusal(tmp_path, monkeypatch):
         def read(self, count):
             raise MemoryError("header allocation failed")
 
-    monkeypatch.setattr(type(source), "open", lambda p, *a, **kw: FailedRead() if p == source else real_open(p, *a, **kw))
+    monkeypatch.setattr(
+        type(source), "open", lambda p, *a, **kw: FailedRead() if p == source else real_open(p, *a, **kw)
+    )
     assert main(command(source, output, content)) == 1
     assert not output.exists()
 

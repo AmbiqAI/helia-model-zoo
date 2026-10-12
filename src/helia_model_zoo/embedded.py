@@ -13,8 +13,7 @@ _LEXEME = re.compile(
 )
 _SPACE = rb"[ \t\v\f]"
 _DIRECTIVE = rb"(?m)^" + _SPACE + rb"*#" + _SPACE + rb"*"
-_CONDITIONAL = re.compile(_DIRECTIVE + rb"(?:if|ifdef|ifndef|elif|else|endif)\b")
-_TRIGRAPHS = dict(zip(b"=/\'()!<>-", (b"#", b"\\", b"^", b"[", b"]", b"|", b"{", b"}", b"~"), strict=True))
+_TRIGRAPHS = dict(zip(b"=/'()!<>-", (b"#", b"\\", b"^", b"[", b"]", b"|", b"{", b"}", b"~"), strict=True))
 _DIGRAPHS = {b"%:%:": b"##", b"<:": b"[", b":>": b"]", b"<%": b"{", b"%>": b"}", b"%:": b"#"}
 _GUARD = re.compile(
     rb"\s*#[ \t\v\f]*ifndef[ \t\v\f]+(?P<name>[A-Za-z_][A-Za-z0-9_]*)[ \t\v\f]*\n"
@@ -50,9 +49,8 @@ def extract_c_array(header: bytes, symbol: str) -> bytes:
     text = re.sub(rb"%:%:|<:|:>|<%|%>|%:", lambda match: _DIGRAPHS[match[0]], text)
     if guard := _GUARD.fullmatch(text):
         text = guard["body"]
-    if _CONDITIONAL.search(text):
-        raise ValueError("conditional array definitions need preprocessing; supply an unconditional literal header")
-    text = re.sub(_DIRECTIVE + rb"[^\n]*", b"", text)
+    if re.search(_DIRECTIVE, text):
+        raise ValueError("preprocessing beyond a canonical outer include guard is unsupported")
     pattern = (
         rb"\b(?:unsigned\s+char|uint8_t)\s+"
         + re.escape(symbol.encode("ascii"))
