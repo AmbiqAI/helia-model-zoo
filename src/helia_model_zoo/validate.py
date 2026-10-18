@@ -15,7 +15,7 @@ import numpy as np
 
 from . import golden, runtime
 from .hydrate import LFS_POINTER_PREFIX, FetchError, fetch_file, sha256_file
-from .manifest import FileRef, Manifest, Precision, Record, load_manifest
+from .manifest import FileRef, Golden, Manifest, Precision, Record, load_manifest
 
 __all__ = ["ValidationError", "sha256_file", "validate"]
 
@@ -123,6 +123,17 @@ def _check_golden(
         golden.replay_arrays(model, arrays, precision.golden, record.io, f"{where}.golden", problems)
 
 
+def _v1_golden(record: Record, precision: Precision) -> Golden | None:
+    """The golden a v1 entry for ``precision`` names.
+
+    An fp16 precision has no golden, because LiteRT cannot replay it; its v1 entry names the fp32 golden,
+    whose inputs cast to float16 are the fp16 model's inputs, as the model card compares them.
+    """
+    if precision.golden is None and precision.name == "fp16" and "fp32" in record.precisions:
+        return record.precisions["fp32"].golden
+    return precision.golden
+
+
 def _check_v1(manifest: Manifest, v1_path: Path, problems: list[str]) -> None:
     """Every v1 entry must name the same files, hashes and runtime as the record that holds its model."""
     v1 = json.loads(Path(v1_path).read_text(encoding="utf-8"))
@@ -140,7 +151,7 @@ def _check_v1(manifest: Manifest, v1_path: Path, problems: list[str]) -> None:
         stem, _, suffix = str(item.get("id")).rpartition("-")
         if stem != record.id or not suffix:
             problems.append(f"{where}: the ID does not name record {record.id}, which lists its model")
-        golden = precision.golden
+        golden = _v1_golden(record, precision)
         pairs = [
             ("model_sha256", item["model_sha256"], precision.model.sha256),
             ("golden", item["golden"], golden and golden.file.path),

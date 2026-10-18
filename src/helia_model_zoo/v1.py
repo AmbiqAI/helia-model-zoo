@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import numpy as np
@@ -47,6 +47,7 @@ def _validate_tensor_keys(
     arrays: np.lib.npyio.NpzFile,
     prefix: str,
     tensor_details: list[dict[str, Any]],
+    paired: bool,
 ) -> None:
     expected_keys = [f"{prefix}_{index}" for index in range(len(tensor_details))]
     actual_keys = sorted(key for key in arrays.files if key.startswith(f"{prefix}_"))
@@ -58,7 +59,8 @@ def _validate_tensor_keys(
         if array.shape != expected_shape:
             raise ValueError(f"{entry_id}: {key} shape mismatch: expected {expected_shape}, got {array.shape}")
         expected_dtype = np.dtype(detail["dtype"])
-        if array.dtype != expected_dtype:
+        cast = paired and expected_dtype == np.float16 and array.dtype == np.float32
+        if array.dtype != expected_dtype and not cast:
             raise ValueError(f"{entry_id}: {key} dtype mismatch: expected {expected_dtype}, got {array.dtype}")
 
 
@@ -101,8 +103,8 @@ def validate_manifest(manifest_path: Path) -> None:
         model_path = _validate_artifact(root, entry_id, entry["model"], entry["model_sha256"])
         golden_path = _validate_artifact(root, entry_id, entry["golden"], entry["golden_sha256"])
 
+        # Not allocated: LiteRT cannot prepare a native float16 graph, and the signature needs no tensors.
         interpreter = Interpreter(model_path=str(model_path))
-        interpreter.allocate_tensors()
         with np.load(golden_path, allow_pickle=False) as arrays:
             allowed_keys = {
                 *(f"input_{index}" for index in range(len(interpreter.get_input_details()))),
@@ -111,5 +113,12 @@ def validate_manifest(manifest_path: Path) -> None:
             unexpected_keys = sorted(set(arrays.files) - allowed_keys)
             if unexpected_keys:
                 raise ValueError(f"{entry_id}: unexpected NPZ keys: {unexpected_keys}")
-            _validate_tensor_keys(entry_id, arrays, "input", interpreter.get_input_details())
-            _validate_tensor_keys(entry_id, arrays, "output", interpreter.get_output_details())
+            details = [*interpreter.get_input_details(), *interpreter.get_output_details()]
+            # LiteRT cannot run a native float16 model, so its entry names its own record's fp32 golden.
+            paired = any(np.dtype(detail["dtype"]) == np.float16 for detail in details)
+            if paired:
+                sibling = str(PurePosixPath(entry["model"]).parent.parent / "fp32" / "golden.npz")
+                if entry["golden"] != sibling:
+                    raise ValueError(f"{entry_id}: a float16 model must name its record's fp32 golden {sibling}")
+            _validate_tensor_keys(entry_id, arrays, "input", interpreter.get_input_details(), paired)
+            _validate_tensor_keys(entry_id, arrays, "output", interpreter.get_output_details(), paired)

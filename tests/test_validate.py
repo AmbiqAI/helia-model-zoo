@@ -187,6 +187,40 @@ def test_v1_models_must_be_in_a_record(tmp_path, data):
     assert problems[-1] == "v1 not-in-a-record: no record lists the model 'models/x/a8w8/model.tflite'"
 
 
+def test_v1_fp16_entries_name_the_fp32_golden(tmp_path, data):
+    v1 = json.loads((REPO / "corpus-manifest-v1.json").read_text())
+    path = tmp_path / "v1.json"
+
+    def fp16_problems():
+        path.write_text(json.dumps(v1))
+        problems = problems_of(tmp_path, only(data, "mlperf-tiny-kws"), signatures=False, v1=path)
+        return [p for p in problems if p.startswith("v1 mlperf-tiny-kws-fp16")]
+
+    assert fp16_problems() == []
+    item = next(i for i in v1["entries"] if i["id"] == "mlperf-tiny-kws-fp16")
+    item["golden"] = "models/mlperf-tiny-kws/a8w8/golden.npz"
+    assert fp16_problems() == [
+        "v1 mlperf-tiny-kws-fp16: golden is 'models/mlperf-tiny-kws/a8w8/golden.npz' in v1 "
+        "but 'models/mlperf-tiny-kws/fp32/golden.npz' in record mlperf-tiny-kws"
+    ]
+
+
+def test_v1_only_fp16_entries_may_name_the_fp32_golden(tmp_path, data):
+    """A precision without a golden of its own takes the fp32 golden only if it is fp16."""
+    v1 = json.loads((REPO / "corpus-manifest-v1.json").read_text())
+    item = next(i for i in v1["entries"] if i["id"] == "mlperf-tiny-kws-int16")
+    fp32 = next(i for i in v1["entries"] if i["id"] == "mlperf-tiny-kws-fp32")
+    item.update(golden=fp32["golden"], golden_sha256=fp32["golden_sha256"])
+    path = tmp_path / "v1.json"
+    path.write_text(json.dumps(v1))
+    del entry(data, "mlperf-tiny-kws")["precisions"]["a16w8"]["golden"]
+    problems = problems_of(tmp_path, only(data, "mlperf-tiny-kws"), signatures=False, v1=path)
+    assert (
+        "v1 mlperf-tiny-kws-int16: golden is 'models/mlperf-tiny-kws/fp32/golden.npz' in v1 but None in record mlperf-tiny-kws"
+        in problems
+    )
+
+
 def write_golden(path, arrays, precision):
     np.savez(path, **arrays)
     precision["golden"].update(sha256=hashlib.sha256(path.read_bytes()).hexdigest(), bytes=path.stat().st_size)
@@ -407,8 +441,8 @@ def test_cli_inventory(tmp_path, data, capsys):
     }
     vww = rows["mlperf-tiny-vww"]
     assert (vww["precisions"], vww["golden"], vww["redistributable"], vww["gaps"]) == (
-        ["fp32", "fp16", "a8w8"],
-        ["fp32", "a8w8"],
+        ["fp32", "fp16", "a8w8", "a16w8"],
+        ["fp32", "a8w8", "a16w8"],
         "yes",
         [],
     )
@@ -438,8 +472,8 @@ def test_cli_inventory(tmp_path, data, capsys):
     assert lines[2:] == [
         "| rnnoise | de\\|noise filter | ARM-software/ML-zoo@fec0bb5b | NOASSERTION | unverified | fp32, a8w8 | fp32 "
         "| git-lfs, hf:Example/rnnoise, hf:datasets/Example/goldens | licence unknown, no a8w8 golden |",
-        "| secret | anomaly-detection | mlcommons/tiny@4addd0fa | Apache-2.0 | private | fp32, fp16, a8w8 "
-        "| fp32, a8w8 | git-lfs | - |",
+        "| secret | anomaly-detection | mlcommons/tiny@4addd0fa | Apache-2.0 | private | fp32, fp16, a8w8, a16w8 "
+        "| fp32, a8w8, a16w8 | git-lfs | - |",
     ]
 
 

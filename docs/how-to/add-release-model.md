@@ -100,7 +100,14 @@ existing record as a template. Each file is a `path` inside the model directory
 point from the model, and record the LiteRT resolver its golden replays
 under (`builtin_ref` for new goldens). CI refuses a v1 entry that disagrees with
 the record holding its model, or whose ID is not that record's ID with a suffix
-such as `-int8`.
+such as `-int8`. An `fp16` precision has no golden, so its v1 entry names the
+record's `fp32` golden, whose inputs cast to float16 are the `fp16` model's
+inputs. Add such an entry only when the record's `fp32` model is the `fp16`
+model's float source, so the golden is a reference to float16 rounding; it is
+not one for AD01, whose `fp16` is built from `ad01.h5` and differs from its
+`fp32` by up to 4.7 (see its card). helia-aot casts that golden to float16 and
+compares within the case's tolerance once AmbiqAI/helia-aot#866 lands; its
+earlier corpus check requires an exact golden dtype.
 
 The record's fields:
 
