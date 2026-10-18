@@ -58,7 +58,9 @@ def _validate_tensor_keys(
         if array.shape != expected_shape:
             raise ValueError(f"{entry_id}: {key} shape mismatch: expected {expected_shape}, got {array.shape}")
         expected_dtype = np.dtype(detail["dtype"])
-        if array.dtype != expected_dtype:
+        # A native float16 model is paired with its fp32 sibling's float32 golden; LiteRT cannot run it.
+        paired = expected_dtype == np.float16 and array.dtype == np.float32
+        if array.dtype != expected_dtype and not paired:
             raise ValueError(f"{entry_id}: {key} dtype mismatch: expected {expected_dtype}, got {array.dtype}")
 
 
@@ -101,8 +103,8 @@ def validate_manifest(manifest_path: Path) -> None:
         model_path = _validate_artifact(root, entry_id, entry["model"], entry["model_sha256"])
         golden_path = _validate_artifact(root, entry_id, entry["golden"], entry["golden_sha256"])
 
+        # Not allocated: LiteRT cannot prepare a native float16 graph, and the signature needs no tensors.
         interpreter = Interpreter(model_path=str(model_path))
-        interpreter.allocate_tensors()
         with np.load(golden_path, allow_pickle=False) as arrays:
             allowed_keys = {
                 *(f"input_{index}" for index in range(len(interpreter.get_input_details()))),
