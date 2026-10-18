@@ -99,6 +99,72 @@
       "reference_runtime_version": "2.1.2",
       "provenance_reference": "models/mobilenet-v2/README.md",
       "license_reference": "models/mobilenet-v2/README.md"
+    },
+    {
+      "id": "mlperf-tiny-kws-fp32",
+      "model": "models/mlperf-tiny-kws/fp32/model.tflite",
+      "model_sha256": "56118080c1451eedd82b0989ee3b7f81ac8ecf7eec0ea744564762127160075c",
+      "golden": "models/mlperf-tiny-kws/fp32/golden.npz",
+      "golden_sha256": "6949d0f26befbf97085c20c69f20d0758bebffb99626da73371f1af727de1b14",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "models/mlperf-tiny-kws/README.md",
+      "license_reference": "models/mlperf-tiny-kws/README.md"
+    },
+    {
+      "id": "mlperf-tiny-kws-fp16",
+      "model": "models/mlperf-tiny-kws/fp16/model.tflite",
+      "model_sha256": "9fe02726897c493d7b7e9f03fa096fb60c719ca55f7c1644800412a7f3077fef",
+      "golden": "models/mlperf-tiny-kws/fp32/golden.npz",
+      "golden_sha256": "6949d0f26befbf97085c20c69f20d0758bebffb99626da73371f1af727de1b14",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "models/mlperf-tiny-kws/README.md",
+      "license_reference": "models/mlperf-tiny-kws/README.md"
+    },
+    {
+      "id": "mlperf-tiny-kws-int16",
+      "model": "models/mlperf-tiny-kws/a16w8/model.tflite",
+      "model_sha256": "b97834fed884638c87da85f352c718bf4f012dafc5c08bc22988a062bc7db571",
+      "golden": "models/mlperf-tiny-kws/a16w8/golden.npz",
+      "golden_sha256": "e2010580f23774e670b7f665e1aea75e24c09db13325bb57651aff57893f7f0a",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "models/mlperf-tiny-kws/README.md",
+      "license_reference": "models/mlperf-tiny-kws/README.md"
+    },
+    {
+      "id": "mlperf-tiny-resnet8-fp32",
+      "model": "models/mlperf-tiny-resnet8/fp32/model.tflite",
+      "model_sha256": "b5c0046d6e0328b4956afd6baa29555a29b1f1c65bdd45aaed75b7cd484d9f79",
+      "golden": "models/mlperf-tiny-resnet8/fp32/golden.npz",
+      "golden_sha256": "37e5a3fe36a3e8a0cf6b5c5a9c9b991ef07b89c2993ab5554278cb191e3b26a7",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "models/mlperf-tiny-resnet8/README.md",
+      "license_reference": "models/mlperf-tiny-resnet8/README.md"
+    },
+    {
+      "id": "mlperf-tiny-resnet8-fp16",
+      "model": "models/mlperf-tiny-resnet8/fp16/model.tflite",
+      "model_sha256": "1266a31bce015ba776897391ca4d7039ce7af2c9e159d3f90efea047c1c51e95",
+      "golden": "models/mlperf-tiny-resnet8/fp32/golden.npz",
+      "golden_sha256": "37e5a3fe36a3e8a0cf6b5c5a9c9b991ef07b89c2993ab5554278cb191e3b26a7",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "models/mlperf-tiny-resnet8/README.md",
+      "license_reference": "models/mlperf-tiny-resnet8/README.md"
+    },
+    {
+      "id": "mlperf-tiny-resnet8-int16",
+      "model": "models/mlperf-tiny-resnet8/a16w8/model.tflite",
+      "model_sha256": "bf3c60e00bcd8bf3951babb6640f8e83f0bf61c1bd2113435516dac59bbf1370",
+      "golden": "models/mlperf-tiny-resnet8/a16w8/golden.npz",
+      "golden_sha256": "7e427e021f37d360dc63617708e9b0a30f08a552ef8efeacb0f8a084066e0893",
+      "reference_runtime": "ai-edge-litert",
+      "reference_runtime_version": "2.1.2",
+      "provenance_reference": "models/mlperf-tiny-resnet8/README.md",
+      "license_reference": "models/mlperf-tiny-resnet8/README.md"
     }
   ]
 }
