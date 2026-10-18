@@ -100,7 +100,10 @@ existing record as a template. Each file is a `path` inside the model directory
 point from the model, and record the LiteRT resolver its golden replays
 under (`builtin_ref` for new goldens). CI refuses a v1 entry that disagrees with
 the record holding its model, or whose ID is not that record's ID with a suffix
-such as `-int8`.
+such as `-int8`. An `fp16` precision has no golden, so its v1 entry names the
+record's `fp32` golden, whose inputs cast to float16 are the `fp16` model's
+inputs; helia-aot casts that golden to float16 and compares within the case's
+tolerance.
 
 The record's fields:
 

@@ -80,7 +80,8 @@ precisions, tensors, state pairs (by tensor name), golden metadata, licence and
 upstream source. The records ship with the Python package.
 `corpus-manifest-v1.json` keeps the v1 format that helia-aot reads; CI checks
 that each v1 entry agrees with the record holding its model, and that its ID is
-that record's ID with a suffix.
+that record's ID with a suffix. A v1 entry for an `fp16` model names its record's
+`fp32` golden.
 
 CI hydrates Git LFS and checks artifact hashes, the declared tensors, NPZ keys,
 shapes and dtypes against each TFLite model. It also checks that each golden's
