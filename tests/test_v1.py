@@ -6,8 +6,6 @@ import shutil
 import pytest
 from conftest import REPO
 
-from helia_model_zoo.v1 import validate_manifest
-
 V1 = {item["id"]: item for item in json.loads((REPO / "corpus-manifest-v1.json").read_text())["entries"]}
 
 
@@ -20,6 +18,13 @@ def manifest(root, tmp_path, *items):
     path = tmp_path / "corpus-manifest-v1.json"
     path.write_text(json.dumps({"schema_version": 1, "entries": list(items)}))
     return path
+
+
+def validate_manifest(path):
+    # Imported here: helia_model_zoo.v1 needs LiteRT, which the root fixture checks first.
+    from helia_model_zoo import v1
+
+    v1.validate_manifest(path)
 
 
 def golden_of(item_id):
