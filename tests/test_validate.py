@@ -205,6 +205,22 @@ def test_v1_fp16_entries_name_the_fp32_golden(tmp_path, data):
     ]
 
 
+def test_v1_only_fp16_entries_may_name_the_fp32_golden(tmp_path, data):
+    """A precision without a golden of its own takes the fp32 golden only if it is fp16."""
+    v1 = json.loads((REPO / "corpus-manifest-v1.json").read_text())
+    item = next(i for i in v1["entries"] if i["id"] == "mlperf-tiny-kws-int16")
+    fp32 = next(i for i in v1["entries"] if i["id"] == "mlperf-tiny-kws-fp32")
+    item.update(golden=fp32["golden"], golden_sha256=fp32["golden_sha256"])
+    path = tmp_path / "v1.json"
+    path.write_text(json.dumps(v1))
+    del entry(data, "mlperf-tiny-kws")["precisions"]["a16w8"]["golden"]
+    problems = problems_of(tmp_path, only(data, "mlperf-tiny-kws"), signatures=False, v1=path)
+    assert (
+        "v1 mlperf-tiny-kws-int16: golden is 'models/mlperf-tiny-kws/fp32/golden.npz' in v1 but None in record mlperf-tiny-kws"
+        in problems
+    )
+
+
 def write_golden(path, arrays, precision):
     np.savez(path, **arrays)
     precision["golden"].update(sha256=hashlib.sha256(path.read_bytes()).hexdigest(), bytes=path.stat().st_size)
